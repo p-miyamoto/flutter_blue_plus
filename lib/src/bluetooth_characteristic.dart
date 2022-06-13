@@ -167,6 +167,7 @@ class BluetoothCharacteristic {
   //TODO: androidのFlutterBluePlugin.javaにあるonDescriptorWrite内のsetNotificationResponseを実行する際に以下のコードを追記している。
   //TODO: q.setSuccess(status == BluetoothGatt.GATT_SUCCESS);
   /// Sets notifications or indications for the value of a specified characteristic
+  /// notificationsかindicationsを設定する。(成功判定にステータスを含む)
   Future<bool> setNotifyValue2(bool notify) async {
     var request = protos.SetNotificationRequest.create()
       ..remoteId = deviceId.toString()
@@ -186,12 +187,15 @@ class BluetoothCharacteristic {
             (p.characteristic.uuid == request.characteristicUuid) &&
             (p.characteristic.serviceUuid == request.serviceUuid))
         .first;
+    //success(StatusがGATT_SUCCESS)以外は失敗とする。
     if (!response.success) {
       return false;
     }
+    //characteristicを更新
     BluetoothCharacteristic c =
         BluetoothCharacteristic.fromProto(response.characteristic);
     _updateDescriptors(c.descriptors);
+    //isNotifyingが引数と一致しているなら変更成功しているのでtrue.
     return (c.isNotifying == notify);
   }
 
