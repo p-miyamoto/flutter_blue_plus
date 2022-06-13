@@ -1008,6 +1008,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
         // SetNotificationResponse
         Protos.SetNotificationResponse.Builder q = Protos.SetNotificationResponse.newBuilder();
         q.setRemoteId(gatt.getDevice().getAddress());
+        q.setSuccess(status == BluetoothGatt.GATT_SUCCESS);
         q.setCharacteristic(ProtoMaker.from(gatt.getDevice(), descriptor.getCharacteristic(), gatt));
         invokeMethodUIThread("SetNotificationResponse", q.build().toByteArray());
       }
