@@ -133,6 +133,29 @@ GPBEnumDescriptor *ProtosDeviceStateResponse_BluetoothDeviceState_EnumDescriptor
  **/
 BOOL ProtosDeviceStateResponse_BluetoothDeviceState_IsValidValue(int32_t value);
 
+#pragma mark - Enum ProtosDeviceConnectionStatusResponse_BluetoothDeviceState
+
+typedef GPB_ENUM(ProtosDeviceConnectionStatusResponse_BluetoothDeviceState) {
+  /**
+   * Value used if any message's field encounters a value that is not defined
+   * by this enum. The message will also have C functions to get/set the rawValue
+   * of the field.
+   **/
+  ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_GPBUnrecognizedEnumeratorValue = kGPBUnrecognizedEnumeratorValue,
+  ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Disconnected = 0,
+  ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Connecting = 1,
+  ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Connected = 2,
+  ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Disconnecting = 3,
+};
+
+GPBEnumDescriptor *ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_EnumDescriptor(void);
+
+/**
+ * Checks to see if the given value is defined by the enum or was not known at
+ * the time this source was generated.
+ **/
+BOOL ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_IsValidValue(int32_t value);
+
 #pragma mark - ProtosFlutterblueplusRoot
 
 /**
@@ -732,6 +755,36 @@ int32_t ProtosDeviceStateResponse_State_RawValue(ProtosDeviceStateResponse *mess
  * was generated.
  **/
 void SetProtosDeviceStateResponse_State_RawValue(ProtosDeviceStateResponse *message, int32_t value);
+
+#pragma mark - ProtosDeviceConnectionStatusResponse
+
+typedef GPB_ENUM(ProtosDeviceConnectionStatusResponse_FieldNumber) {
+  ProtosDeviceConnectionStatusResponse_FieldNumber_RemoteId = 1,
+  ProtosDeviceConnectionStatusResponse_FieldNumber_State = 2,
+  ProtosDeviceConnectionStatusResponse_FieldNumber_Status = 3,
+};
+
+GPB_FINAL @interface ProtosDeviceConnectionStatusResponse : GPBMessage
+
+@property(nonatomic, readwrite, copy, null_resettable) NSString *remoteId;
+
+@property(nonatomic, readwrite) ProtosDeviceConnectionStatusResponse_BluetoothDeviceState state;
+
+@property(nonatomic, readwrite) int32_t status;
+
+@end
+
+/**
+ * Fetches the raw value of a @c ProtosDeviceConnectionStatusResponse's @c state property, even
+ * if the value was not defined by the enum at the time the code was generated.
+ **/
+int32_t ProtosDeviceConnectionStatusResponse_State_RawValue(ProtosDeviceConnectionStatusResponse *message);
+/**
+ * Sets the raw value of an @c ProtosDeviceConnectionStatusResponse's @c state property, allowing
+ * it to be set to a value that was not defined by the enum at the time the code
+ * was generated.
+ **/
+void SetProtosDeviceConnectionStatusResponse_State_RawValue(ProtosDeviceConnectionStatusResponse *message, int32_t value);
 
 #pragma mark - ProtosConnectedDevicesResponse
 

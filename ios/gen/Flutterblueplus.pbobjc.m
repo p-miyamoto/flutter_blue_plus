@@ -2056,6 +2056,125 @@ BOOL ProtosDeviceStateResponse_BluetoothDeviceState_IsValidValue(int32_t value__
   }
 }
 
+#pragma mark - ProtosDeviceConnectionStatusResponse
+
+@implementation ProtosDeviceConnectionStatusResponse
+
+@dynamic remoteId;
+@dynamic state;
+@dynamic status;
+
+typedef struct ProtosDeviceConnectionStatusResponse__storage_ {
+  uint32_t _has_storage_[1];
+  ProtosDeviceConnectionStatusResponse_BluetoothDeviceState state;
+  int32_t status;
+  NSString *remoteId;
+} ProtosDeviceConnectionStatusResponse__storage_;
+
+// This method is threadsafe because it is initially called
+// in +initialize for each subclass.
++ (GPBDescriptor *)descriptor {
+  static GPBDescriptor *descriptor = nil;
+  if (!descriptor) {
+    static GPBMessageFieldDescription fields[] = {
+      {
+        .name = "remoteId",
+        .dataTypeSpecific.clazz = Nil,
+        .number = ProtosDeviceConnectionStatusResponse_FieldNumber_RemoteId,
+        .hasIndex = 0,
+        .offset = (uint32_t)offsetof(ProtosDeviceConnectionStatusResponse__storage_, remoteId),
+        .flags = (GPBFieldFlags)(GPBFieldOptional | GPBFieldClearHasIvarOnZero),
+        .dataType = GPBDataTypeString,
+      },
+      {
+        .name = "state",
+        .dataTypeSpecific.enumDescFunc = ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_EnumDescriptor,
+        .number = ProtosDeviceConnectionStatusResponse_FieldNumber_State,
+        .hasIndex = 1,
+        .offset = (uint32_t)offsetof(ProtosDeviceConnectionStatusResponse__storage_, state),
+        .flags = (GPBFieldFlags)(GPBFieldOptional | GPBFieldHasEnumDescriptor | GPBFieldClearHasIvarOnZero),
+        .dataType = GPBDataTypeEnum,
+      },
+      {
+        .name = "status",
+        .dataTypeSpecific.clazz = Nil,
+        .number = ProtosDeviceConnectionStatusResponse_FieldNumber_Status,
+        .hasIndex = 2,
+        .offset = (uint32_t)offsetof(ProtosDeviceConnectionStatusResponse__storage_, status),
+        .flags = (GPBFieldFlags)(GPBFieldOptional | GPBFieldClearHasIvarOnZero),
+        .dataType = GPBDataTypeInt32,
+      },
+    };
+    GPBDescriptor *localDescriptor =
+        [GPBDescriptor allocDescriptorForClass:[ProtosDeviceConnectionStatusResponse class]
+                                     rootClass:[ProtosFlutterblueplusRoot class]
+                                          file:ProtosFlutterblueplusRoot_FileDescriptor()
+                                        fields:fields
+                                    fieldCount:(uint32_t)(sizeof(fields) / sizeof(GPBMessageFieldDescription))
+                                   storageSize:sizeof(ProtosDeviceConnectionStatusResponse__storage_)
+                                         flags:(GPBDescriptorInitializationFlags)(GPBDescriptorInitializationFlag_UsesClassRefs | GPBDescriptorInitializationFlag_Proto3OptionalKnown)];
+    #if defined(DEBUG) && DEBUG
+      NSAssert(descriptor == nil, @"Startup recursed!");
+    #endif  // DEBUG
+    descriptor = localDescriptor;
+  }
+  return descriptor;
+}
+
+@end
+
+int32_t ProtosDeviceConnectionStatusResponse_State_RawValue(ProtosDeviceConnectionStatusResponse *message) {
+  GPBDescriptor *descriptor = [ProtosDeviceConnectionStatusResponse descriptor];
+  GPBFieldDescriptor *field = [descriptor fieldWithNumber:ProtosDeviceConnectionStatusResponse_FieldNumber_State];
+  return GPBGetMessageRawEnumField(message, field);
+}
+
+void SetProtosDeviceConnectionStatusResponse_State_RawValue(ProtosDeviceConnectionStatusResponse *message, int32_t value) {
+  GPBDescriptor *descriptor = [ProtosDeviceConnectionStatusResponse descriptor];
+  GPBFieldDescriptor *field = [descriptor fieldWithNumber:ProtosDeviceConnectionStatusResponse_FieldNumber_State];
+  GPBSetMessageRawEnumField(message, field, value);
+}
+
+#pragma mark - Enum ProtosDeviceConnectionStatusResponse_BluetoothDeviceState
+
+GPBEnumDescriptor *ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_EnumDescriptor(void) {
+  static _Atomic(GPBEnumDescriptor*) descriptor = nil;
+  if (!descriptor) {
+    static const char *valueNames =
+        "Disconnected\000Connecting\000Connected\000Discon"
+        "necting\000";
+    static const int32_t values[] = {
+        ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Disconnected,
+        ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Connecting,
+        ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Connected,
+        ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Disconnecting,
+    };
+    GPBEnumDescriptor *worker =
+        [GPBEnumDescriptor allocDescriptorForName:GPBNSStringifySymbol(ProtosDeviceConnectionStatusResponse_BluetoothDeviceState)
+                                       valueNames:valueNames
+                                           values:values
+                                            count:(uint32_t)(sizeof(values) / sizeof(int32_t))
+                                     enumVerifier:ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_IsValidValue];
+    GPBEnumDescriptor *expected = nil;
+    if (!atomic_compare_exchange_strong(&descriptor, &expected, worker)) {
+      [worker release];
+    }
+  }
+  return descriptor;
+}
+
+BOOL ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_IsValidValue(int32_t value__) {
+  switch (value__) {
+    case ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Disconnected:
+    case ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Connecting:
+    case ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Connected:
+    case ProtosDeviceConnectionStatusResponse_BluetoothDeviceState_Disconnecting:
+      return YES;
+    default:
+      return NO;
+  }
+}
+
 #pragma mark - ProtosConnectedDevicesResponse
 
 @implementation ProtosConnectedDevicesResponse

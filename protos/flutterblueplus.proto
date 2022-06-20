@@ -199,6 +199,19 @@ message DeviceStateResponse {
   BluetoothDeviceState state = 2;
 }
 
+//デバイス接続ステータス取得用
+message DeviceConnectionStatusResponse {
+  enum BluetoothDeviceState {
+    DISCONNECTED = 0;
+    CONNECTING = 1;
+    CONNECTED = 2;
+    DISCONNECTING = 3;
+  }
+  string remote_id = 1;
+  BluetoothDeviceState state = 2;
+  int32 status = 3;
+}
+
 message ConnectedDevicesResponse {
   repeated BluetoothDevice devices = 1;
 }

@@ -120,6 +120,28 @@ class BluetoothDevice {
         .map((p) => BluetoothDeviceState.values[p.state.value]);
   }
 
+  /////デバイス接続ステータス取得用
+  /// The current connection state and status of the device.
+  Stream<DeviceConnectioinStatus> get status async* {
+    yield await FlutterBluePlus.instance._channel
+        .invokeMethod('DeviceStatus', id.toString())
+        .then((buffer) =>
+            protos.DeviceConnectionStatusResponse.fromBuffer(buffer))
+        .then((p) => DeviceConnectioinStatus(
+            state: BluetoothDeviceState.values[p.state.value],
+            status: p.status));
+
+    yield* FlutterBluePlus.instance._methodStream
+        .where((m) => m.method == "DeviceStatus")
+        .map((m) => m.arguments)
+        .map((buffer) =>
+            protos.DeviceConnectionStatusResponse.fromBuffer(buffer))
+        .where((p) => p.remoteId == id.toString())
+        .map((p) => DeviceConnectioinStatus(
+            state: BluetoothDeviceState.values[p.state.value],
+            status: p.status));
+  }
+
   /// The MTU size in bytes
   Stream<int> get mtu async* {
     yield await FlutterBluePlus.instance._channel
@@ -197,3 +219,9 @@ class BluetoothDevice {
 enum BluetoothDeviceType { unknown, classic, le, dual }
 
 enum BluetoothDeviceState { disconnected, connecting, connected, disconnecting }
+
+class DeviceConnectioinStatus {
+  BluetoothDeviceState state;
+  int status;
+  DeviceConnectioinStatus({required this.state, required this.status});
+}

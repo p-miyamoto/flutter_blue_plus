@@ -3,7 +3,7 @@
 //  source: flutterblueplus.proto
 //
 // @dart = 2.12
-// ignore_for_file: annotate_overrides,camel_case_types,unnecessary_const,non_constant_identifier_names,library_prefixes,unused_import,unused_shown_name,return_of_invalid_type,unnecessary_this,prefer_final_fields
+// ignore_for_file: annotate_overrides,camel_case_types,constant_identifier_names,directives_ordering,library_prefixes,non_constant_identifier_names,prefer_final_fields,return_of_invalid_type,unnecessary_const,unnecessary_import,unnecessary_this,unused_import,unused_shown_name
 
 import 'dart:core' as $core;
 
@@ -2021,6 +2021,81 @@ class DeviceStateResponse extends $pb.GeneratedMessage {
   $core.bool hasState() => $_has(1);
   @$pb.TagNumber(2)
   void clearState() => clearField(2);
+}
+
+class DeviceConnectionStatusResponse extends $pb.GeneratedMessage {
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(const $core.bool.fromEnvironment('protobuf.omit_message_names') ? '' : 'DeviceConnectionStatusResponse', createEmptyInstance: create)
+    ..aOS(1, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'remoteId')
+    ..e<DeviceConnectionStatusResponse_BluetoothDeviceState>(2, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'state', $pb.PbFieldType.OE, defaultOrMaker: DeviceConnectionStatusResponse_BluetoothDeviceState.DISCONNECTED, valueOf: DeviceConnectionStatusResponse_BluetoothDeviceState.valueOf, enumValues: DeviceConnectionStatusResponse_BluetoothDeviceState.values)
+    ..a<$core.int>(3, const $core.bool.fromEnvironment('protobuf.omit_field_names') ? '' : 'status', $pb.PbFieldType.O3)
+    ..hasRequiredFields = false
+  ;
+
+  DeviceConnectionStatusResponse._() : super();
+  factory DeviceConnectionStatusResponse({
+    $core.String? remoteId,
+    DeviceConnectionStatusResponse_BluetoothDeviceState? state,
+    $core.int? status,
+  }) {
+    final _result = create();
+    if (remoteId != null) {
+      _result.remoteId = remoteId;
+    }
+    if (state != null) {
+      _result.state = state;
+    }
+    if (status != null) {
+      _result.status = status;
+    }
+    return _result;
+  }
+  factory DeviceConnectionStatusResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory DeviceConnectionStatusResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  DeviceConnectionStatusResponse clone() => DeviceConnectionStatusResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  DeviceConnectionStatusResponse copyWith(void Function(DeviceConnectionStatusResponse) updates) => super.copyWith((message) => updates(message as DeviceConnectionStatusResponse)) as DeviceConnectionStatusResponse; // ignore: deprecated_member_use
+  $pb.BuilderInfo get info_ => _i;
+  @$core.pragma('dart2js:noInline')
+  static DeviceConnectionStatusResponse create() => DeviceConnectionStatusResponse._();
+  DeviceConnectionStatusResponse createEmptyInstance() => create();
+  static $pb.PbList<DeviceConnectionStatusResponse> createRepeated() => $pb.PbList<DeviceConnectionStatusResponse>();
+  @$core.pragma('dart2js:noInline')
+  static DeviceConnectionStatusResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DeviceConnectionStatusResponse>(create);
+  static DeviceConnectionStatusResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get remoteId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set remoteId($core.String v) { $_setString(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasRemoteId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRemoteId() => clearField(1);
+
+  @$pb.TagNumber(2)
+  DeviceConnectionStatusResponse_BluetoothDeviceState get state => $_getN(1);
+  @$pb.TagNumber(2)
+  set state(DeviceConnectionStatusResponse_BluetoothDeviceState v) { setField(2, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasState() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearState() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get status => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set status($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasStatus() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStatus() => clearField(3);
 }
 
 class ConnectedDevicesResponse extends $pb.GeneratedMessage {

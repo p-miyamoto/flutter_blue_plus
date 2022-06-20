@@ -3,7 +3,7 @@
 //  source: flutterblueplus.proto
 //
 // @dart = 2.12
-// ignore_for_file: annotate_overrides,camel_case_types,unnecessary_const,non_constant_identifier_names,library_prefixes,unused_import,unused_shown_name,return_of_invalid_type,unnecessary_this,prefer_final_fields,deprecated_member_use_from_same_package
+// ignore_for_file: annotate_overrides,camel_case_types,constant_identifier_names,deprecated_member_use_from_same_package,directives_ordering,library_prefixes,non_constant_identifier_names,prefer_final_fields,return_of_invalid_type,unnecessary_const,unnecessary_import,unnecessary_this,unused_import,unused_shown_name
 
 import 'dart:core' as $core;
 import 'dart:convert' as $convert;
@@ -383,6 +383,30 @@ const DeviceStateResponse_BluetoothDeviceState$json = const {
 
 /// Descriptor for `DeviceStateResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deviceStateResponseDescriptor = $convert.base64Decode('ChNEZXZpY2VTdGF0ZVJlc3BvbnNlEhsKCXJlbW90ZV9pZBgBIAEoCVIIcmVtb3RlSWQSPwoFc3RhdGUYAiABKA4yKS5EZXZpY2VTdGF0ZVJlc3BvbnNlLkJsdWV0b290aERldmljZVN0YXRlUgVzdGF0ZSJaChRCbHVldG9vdGhEZXZpY2VTdGF0ZRIQCgxESVNDT05ORUNURUQQABIOCgpDT05ORUNUSU5HEAESDQoJQ09OTkVDVEVEEAISEQoNRElTQ09OTkVDVElORxAD');
+@$core.Deprecated('Use deviceConnectionStatusResponseDescriptor instead')
+const DeviceConnectionStatusResponse$json = const {
+  '1': 'DeviceConnectionStatusResponse',
+  '2': const [
+    const {'1': 'remote_id', '3': 1, '4': 1, '5': 9, '10': 'remoteId'},
+    const {'1': 'state', '3': 2, '4': 1, '5': 14, '6': '.DeviceConnectionStatusResponse.BluetoothDeviceState', '10': 'state'},
+    const {'1': 'status', '3': 3, '4': 1, '5': 5, '10': 'status'},
+  ],
+  '4': const [DeviceConnectionStatusResponse_BluetoothDeviceState$json],
+};
+
+@$core.Deprecated('Use deviceConnectionStatusResponseDescriptor instead')
+const DeviceConnectionStatusResponse_BluetoothDeviceState$json = const {
+  '1': 'BluetoothDeviceState',
+  '2': const [
+    const {'1': 'DISCONNECTED', '2': 0},
+    const {'1': 'CONNECTING', '2': 1},
+    const {'1': 'CONNECTED', '2': 2},
+    const {'1': 'DISCONNECTING', '2': 3},
+  ],
+};
+
+/// Descriptor for `DeviceConnectionStatusResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deviceConnectionStatusResponseDescriptor = $convert.base64Decode('Ch5EZXZpY2VDb25uZWN0aW9uU3RhdHVzUmVzcG9uc2USGwoJcmVtb3RlX2lkGAEgASgJUghyZW1vdGVJZBJKCgVzdGF0ZRgCIAEoDjI0LkRldmljZUNvbm5lY3Rpb25TdGF0dXNSZXNwb25zZS5CbHVldG9vdGhEZXZpY2VTdGF0ZVIFc3RhdGUSFgoGc3RhdHVzGAMgASgFUgZzdGF0dXMiWgoUQmx1ZXRvb3RoRGV2aWNlU3RhdGUSEAoMRElTQ09OTkVDVEVEEAASDgoKQ09OTkVDVElORxABEg0KCUNPTk5FQ1RFRBACEhEKDURJU0NPTk5FQ1RJTkcQAw==');
 @$core.Deprecated('Use connectedDevicesResponseDescriptor instead')
 const ConnectedDevicesResponse$json = const {
   '1': 'ConnectedDevicesResponse',
