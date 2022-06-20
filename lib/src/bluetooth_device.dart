@@ -124,12 +124,10 @@ class BluetoothDevice {
   /// The current connection state and status of the device.
   Stream<DeviceConnectionStatus> get status async* {
     yield await FlutterBluePlus.instance._channel
-        .invokeMethod('DeviceStatus', id.toString())
-        .then((buffer) =>
-            protos.DeviceConnectionStatusResponse.fromBuffer(buffer))
+        .invokeMethod('deviceState', id.toString())
+        .then((buffer) => protos.DeviceStateResponse.fromBuffer(buffer))
         .then((p) => DeviceConnectionStatus(
-            state: BluetoothDeviceState.values[p.state.value],
-            status: p.status));
+            state: BluetoothDeviceState.values[p.state.value], status: 0));
 
     yield* FlutterBluePlus.instance._methodStream
         .where((m) => m.method == "DeviceStatus")
