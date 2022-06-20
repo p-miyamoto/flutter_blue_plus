@@ -122,12 +122,12 @@ class BluetoothDevice {
 
   /////デバイス接続ステータス取得用
   /// The current connection state and status of the device.
-  Stream<DeviceConnectioinStatus> get status async* {
+  Stream<DeviceConnectionStatus> get status async* {
     yield await FlutterBluePlus.instance._channel
         .invokeMethod('DeviceStatus', id.toString())
         .then((buffer) =>
             protos.DeviceConnectionStatusResponse.fromBuffer(buffer))
-        .then((p) => DeviceConnectioinStatus(
+        .then((p) => DeviceConnectionStatus(
             state: BluetoothDeviceState.values[p.state.value],
             status: p.status));
 
@@ -137,7 +137,7 @@ class BluetoothDevice {
         .map((buffer) =>
             protos.DeviceConnectionStatusResponse.fromBuffer(buffer))
         .where((p) => p.remoteId == id.toString())
-        .map((p) => DeviceConnectioinStatus(
+        .map((p) => DeviceConnectionStatus(
             state: BluetoothDeviceState.values[p.state.value],
             status: p.status));
   }
@@ -220,8 +220,8 @@ enum BluetoothDeviceType { unknown, classic, le, dual }
 
 enum BluetoothDeviceState { disconnected, connecting, connected, disconnecting }
 
-class DeviceConnectioinStatus {
+class DeviceConnectionStatus {
   BluetoothDeviceState state;
   int status;
-  DeviceConnectioinStatus({required this.state, required this.status});
+  DeviceConnectionStatus({required this.state, required this.status});
 }
