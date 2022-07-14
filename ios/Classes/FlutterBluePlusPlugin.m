@@ -111,6 +111,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     // Cannot pass blank UUID list for security reasons. Assume all devices have the Generic Access service 0x1800
     NSArray *periphs = [self->_centralManager retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"1800"]]];
     NSLog(@"getConnectedDevices periphs size: %lu", [periphs count]);
+    [self log:LogLevel.info format:@"getConnectedDevices periphs size: %lu", [periphs count]];
     result([self toFlutterData:[self toConnectedDeviceResponseProto:periphs]]);
   } else if([@"connect" isEqualToString:call.method]) {
     FlutterStandardTypedData *data = [call arguments];
@@ -389,6 +390,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral {
   NSLog(@"didConnectPeripheral");
+  [self log:LogLevel.info format:@"didConnectPeripheral"];
   // Register self as delegate for peripheral
   peripheral.delegate = self;
 
@@ -402,6 +404,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
   NSLog(@"didDisconnectPeripheral");
+  [self log:LogLevel.info format:@"didDisconnectPeripheral"];
   // Unregister self as delegate for peripheral, not working #42
   peripheral.delegate = nil;
 
@@ -418,6 +421,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 //
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error {
   NSLog(@"didDiscoverServices");
+  [self log:LogLevel.info format:@"didDiscoverServices"];
   // Send negotiated mtu size
   uint32_t mtu = [self getMtu:peripheral];
   [_channel invokeMethod:@"MtuSize" arguments:[self toFlutterData:[self toMtuSizeResponseProto:peripheral mtu:mtu]]];
@@ -426,6 +430,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [_servicesThatNeedDiscovered addObjectsFromArray:peripheral.services];
   for(CBService *s in [peripheral services]) {
     NSLog(@"Found service: %@", [s.UUID UUIDString]);
+    [self log:LogLevel.info format:@"Found service: %@", [s.UUID UUIDString]];
     [peripheral discoverCharacteristics:nil forService:s];
     // [peripheral discoverIncludedServices:nil forService:s]; // Secondary services in the future (#8)
   }
@@ -433,6 +438,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error {
   NSLog(@"didDiscoverCharacteristicsForService");
+  [self log:LogLevel.info format:@"didDiscoverCharacteristicsForService"];
   // Loop through and discover descriptors for characteristics
   [_servicesThatNeedDiscovered removeObject:service];
   [_characteristicsThatNeedDiscovered addObjectsFromArray:service.characteristics];
@@ -443,6 +449,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverDescriptorsForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didDiscoverDescriptorsForCharacteristic");
+  [self log:LogLevel.info format:@"didDiscoverDescriptorsForCharacteristic"];
   [_characteristicsThatNeedDiscovered removeObject:characteristic];
   if(_servicesThatNeedDiscovered.count > 0 || _characteristicsThatNeedDiscovered.count > 0) {
     // Still discovering
@@ -455,6 +462,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverIncludedServicesForService:(CBService *)service error:(NSError *)error {
   NSLog(@"didDiscoverIncludedServicesForService");
+  [self log:LogLevel.info format:@"didDiscoverIncludedServicesForService"];
   // Loop through and discover characteristics for secondary services
   for(CBService *ss in [service includedServices]) {
     [peripheral discoverCharacteristics:nil forService:ss];
@@ -463,6 +471,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]);
+  [self log:LogLevel.info format:@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]];
   ProtosReadCharacteristicResponse *result = [[ProtosReadCharacteristicResponse alloc] init];
   [result setRemoteId:[peripheral.identifier UUIDString]];
   [result setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
@@ -477,6 +486,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didWriteValueForCharacteristic");
+  [self log:LogLevel.info format:@"didWriteValueForCharacteristic"];
   ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
   [request setRemoteId:[peripheral.identifier UUIDString]];
   [request setCharacteristicUuid:[characteristic.UUID fullUUIDString]];
@@ -489,6 +499,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateNotificationStateForCharacteristic");
+  [self log:LogLevel.info format:@"didUpdateNotificationStateForCharacteristic"];
   // Read CCC descriptor of characteristic
   CBDescriptor *cccd = [self findCCCDescriptor:characteristic];
   if(cccd == nil || error != nil) {
@@ -683,6 +694,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   ProtosBluetoothService *result = [[ProtosBluetoothService alloc] init];
   NSLog(@"peripheral uuid:%@", [peripheral.identifier UUIDString]);
   NSLog(@"service uuid:%@", [service.UUID fullUUIDString]);
+  [self log:LogLevel.info format:@"peripheral uuid:%@, service uuid:%@", [peripheral.identifier UUIDString], [service.UUID fullUUIDString]];
   [result setRemoteId:[peripheral.identifier UUIDString]];
   [result setUuid:[service.UUID fullUUIDString]];
   [result setIsPrimary:[service isPrimary]];
@@ -711,6 +723,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [result setProperties:[self toCharacteristicPropsProto:characteristic.properties]];
   [result setValue:[characteristic value]];
   NSLog(@"uuid: %@ value: %@", [characteristic.UUID fullUUIDString], [characteristic value]);
+  [self log:LogLevel.info format:@"uuid: %@ value: %@", [characteristic.UUID fullUUIDString], [characteristic value]];
   NSMutableArray *descriptorProtos = [NSMutableArray new];
   for(CBDescriptor *d in [characteristic descriptors]) {
     [descriptorProtos addObject:[self toDescriptorProto:peripheral descriptor:d]];
