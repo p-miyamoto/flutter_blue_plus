@@ -1054,6 +1054,8 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   private void log(LogLevel level, String message) {
     if(level.ordinal() <= logLevel.ordinal()) {
       Log.d(TAG, message);
+      //TODO: ログはFlutter側に送信する。
+      invokeMethodUIThread("Logger", message);
     }
   }
 

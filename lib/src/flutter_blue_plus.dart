@@ -107,6 +107,14 @@ class FlutterBluePlus {
         .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
   }
 
+  Stream<String> get logger async* {
+    yield* FlutterBluePlus.instance._methodStream
+        .where((m) => m.method == "Logger")
+        .map((m) => m.arguments)
+        .where((m) => m is String)
+        .map((str) => str as String);
+  }
+
   /// Starts a scan for Bluetooth Low Energy devices and returns a stream
   /// of the [ScanResult] results as they are received.
   ///
