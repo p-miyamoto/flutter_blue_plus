@@ -110,7 +110,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   } else if([@"getConnectedDevices" isEqualToString:call.method]) {
     // Cannot pass blank UUID list for security reasons. Assume all devices have the Generic Access service 0x1800
     NSArray *periphs = [self->_centralManager retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"1800"]]];
-    NSLog(@"getConnectedDevices periphs size: %lu", [periphs count]);
+    NSLog(@"getConnectedDevices periphs size: %lu", (unsigned long)[periphs count]);
     [self log:info format:@"getConnectedDevices periphs size: %lu", [periphs count]];
     result([self toFlutterData:[self toConnectedDeviceResponseProto:periphs]]);
   } else if([@"connect" isEqualToString:call.method]) {
@@ -775,13 +775,13 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)log:(LogLevel)level format:(NSString *)format, ... {
   if(level <= _logLevel) {
-    va_list args;
-    va_start(args, format);
+    //va_list args;
+    //va_start(args, format);
     //TODO: ログはFlutter側に送信する。
     [_channel invokeMethod:@"Logger" arguments:format];
 //    NSString* formattedMessage = [[NSString alloc] initWithFormat:format arguments:args];
-    NSLog(format, args);
-    va_end(args);
+    //NSLog(format, args);
+    //va_end(args);
   }
 }
 
