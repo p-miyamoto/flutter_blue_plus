@@ -111,8 +111,8 @@ class FlutterBluePlus {
     yield* FlutterBluePlus.instance._methodStream
         .where((m) => m.method == "Logger")
         .map((m) => m.arguments)
-        .where((m) => m is String)
-        .map((str) => str as String);
+        .where((m) => m is String || m is List<int>)
+        .map((str) => (str is String) ? str : String.fromCharCodes(str));
   }
 
   /// Starts a scan for Bluetooth Low Energy devices and returns a stream
