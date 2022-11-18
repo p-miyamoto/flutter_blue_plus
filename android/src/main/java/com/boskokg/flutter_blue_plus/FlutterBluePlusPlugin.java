@@ -922,10 +922,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
         }
       }
       if(status != BluetoothGatt.GATT_SUCCESS) {
-        log(LogLevel.DEBUG, "[onConnectionStateChange] mDevices.containsKey(gatt.getDevice().getAddress(): " + mDevices.containsKey(gatt.getDevice().getAddress()));
-        if(!mDevices.containsKey(gatt.getDevice().getAddress())) {
           gatt.close();
-        }
       }
       invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
     }
