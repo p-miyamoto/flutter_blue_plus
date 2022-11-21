@@ -921,9 +921,6 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           gatt.close();
         }
       }
-      if(status != BluetoothGatt.GATT_SUCCESS) {
-          gatt.close();
-      }
       invokeMethodUIThread("DeviceState", ProtoMaker.from(gatt.getDevice(), newState).toByteArray());
     }
 
