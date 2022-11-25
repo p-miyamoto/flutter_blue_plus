@@ -405,6 +405,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
   NSLog(@"didDisconnectPeripheral");
   [self log:debug format:@"didDisconnectPeripheral"];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didDisconnectPeripheral error: %d", error]];
+  }
   // Unregister self as delegate for peripheral, not working #42
   peripheral.delegate = nil;
 
@@ -414,6 +417,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
   // TODO:?
+   //エラーコードを送るようにする
+  [self log:debug format:[NSString stringWithFormat:@"didFailToConnectPeripheral: %@,%d", error, [error code]]];
 }
 
 //
@@ -439,6 +444,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error {
   NSLog(@"didDiscoverCharacteristicsForService");
   [self log:debug format:@"didDiscoverCharacteristicsForService"];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didDiscoverCharacteristicsForService error: %d", error]];
+  }
   // Loop through and discover descriptors for characteristics
   [_servicesThatNeedDiscovered removeObject:service];
   [_characteristicsThatNeedDiscovered addObjectsFromArray:service.characteristics];
@@ -450,6 +458,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverDescriptorsForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didDiscoverDescriptorsForCharacteristic");
   [self log:debug format:@"didDiscoverDescriptorsForCharacteristic"];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didDiscoverDescriptorsForCharacteristic error: %d", error]];
+  }
   [_characteristicsThatNeedDiscovered removeObject:characteristic];
   if(_servicesThatNeedDiscovered.count > 0 || _characteristicsThatNeedDiscovered.count > 0) {
     // Still discovering
@@ -463,6 +474,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverIncludedServicesForService:(CBService *)service error:(NSError *)error {
   NSLog(@"didDiscoverIncludedServicesForService");
   [self log:debug format:@"didDiscoverIncludedServicesForService"];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didDiscoverIncludedServicesForService error: %d", error]];
+  }
   // Loop through and discover characteristics for secondary services
   for(CBService *ss in [service includedServices]) {
     [peripheral discoverCharacteristics:nil forService:ss];
@@ -472,6 +486,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]);
   [self log:debug format:[NSString stringWithFormat:@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]]];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didUpdateValueForCharacteristic error: %d", error]];
+  }
   ProtosReadCharacteristicResponse *result = [[ProtosReadCharacteristicResponse alloc] init];
   [result setRemoteId:[peripheral.identifier UUIDString]];
   [result setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
@@ -487,6 +504,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didWriteValueForCharacteristic");
   [self log:debug format:@"didWriteValueForCharacteristic"];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didWriteValueForCharacteristic error: %d", error]];
+  }
   ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
   [request setRemoteId:[peripheral.identifier UUIDString]];
   [request setCharacteristicUuid:[characteristic.UUID fullUUIDString]];
@@ -500,6 +520,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateNotificationStateForCharacteristic");
   [self log:debug format:@"didUpdateNotificationStateForCharacteristic"];
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didUpdateNotificationStateForCharacteristic error: %d", error]];
+  }
   // Read CCC descriptor of characteristic
   CBDescriptor *cccd = [self findCCCDescriptor:characteristic];
   if(cccd == nil || error != nil) {
@@ -517,6 +540,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForDescriptor:(CBDescriptor *)descriptor error:(NSError *)error {
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didUpdateValueForDescriptor error: %d", error]];
+  }
   ProtosReadDescriptorRequest *q = [[ProtosReadDescriptorRequest alloc] init];
   [q setRemoteId:[peripheral.identifier UUIDString]];
   [q setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
@@ -545,6 +571,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForDescriptor:(CBDescriptor *)descriptor error:(NSError *)error {
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didWriteValueForDescriptor error: %d", error]];
+  }
   ProtosWriteDescriptorRequest *request = [[ProtosWriteDescriptorRequest alloc] init];
   [request setRemoteId:[peripheral.identifier UUIDString]];
   [request setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
@@ -563,6 +592,9 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didReadRSSI:(NSNumber *)rssi error:(NSError *)error {
+  if(error != NULL) {
+    [self log:debug format:[NSString stringWithFormat:@"didReadRSSI error: %d", error]];
+  }
   ProtosReadRssiResult *result = [[ProtosReadRssiResult alloc] init];
   [result setRemoteId:[peripheral.identifier UUIDString]];
   [result setRssi:[rssi intValue]];
