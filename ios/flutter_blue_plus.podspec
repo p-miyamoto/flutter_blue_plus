@@ -13,21 +13,11 @@ Flutter plugin for connecting and communicationg with Bluetooth Low Energy devic
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Bosko Popovic' => 'boskokg@gmail.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*', 'gen/**/*'
-  s.public_header_files = 'Classes/**/*.h', 'gen/**/*.h'
+  s.source_files = 'Classes/**/*'
+  s.public_header_files = 'Classes/**/*.h'
   s.dependency 'Flutter'
   s.platform = :ios, '9.0'
   s.framework = 'CoreBluetooth'
 
-  s.subspec "Protos" do |ss|
-    ss.source_files = "gen/*.pbobjc.{h,m}", "gen/**/*.pbobjc.{h,m}"
-    ss.header_mappings_dir = "gen"
-    ss.requires_arc = false
-    ss.dependency "Protobuf", '~> 3.11'
-  end
-
-  # Flutter.framework does not contain a i386 slice.
-  # s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) GPB_USE_PROTOBUF_FRAMEWORK_IMPORTS=1', }
-
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', }
 end

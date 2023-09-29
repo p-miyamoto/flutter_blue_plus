@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 
 #import "FlutterBluePlusPlugin.h"
-#import "Flutterblueplus.pbobjc.h"
 
 @interface CBUUID (CBUUIDAdditionsFlutterBluePlus)
 - (NSString *)fullUUIDString;
@@ -61,18 +60,41 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [registrar addMethodCallDelegate:instance channel:channel];
 }
 
+////////////////////////////////////////////////////////////
+// ██   ██   █████   ███    ██  ██████   ██       ███████    
+// ██   ██  ██   ██  ████   ██  ██   ██  ██       ██         
+// ███████  ███████  ██ ██  ██  ██   ██  ██       █████      
+// ██   ██  ██   ██  ██  ██ ██  ██   ██  ██       ██         
+// ██   ██  ██   ██  ██   ████  ██████   ███████  ███████                                                       
+//                                                      
+// ███    ███  ███████  ████████  ██   ██   ██████   ██████  
+// ████  ████  ██          ██     ██   ██  ██    ██  ██   ██ 
+// ██ ████ ██  █████       ██     ███████  ██    ██  ██   ██ 
+// ██  ██  ██  ██          ██     ██   ██  ██    ██  ██   ██ 
+// ██      ██  ███████     ██     ██   ██   ██████   ██████                                              
+//                                                      
+//  ██████   █████   ██       ██                           
+// ██       ██   ██  ██       ██                           
+// ██       ███████  ██       ██                           
+// ██       ██   ██  ██       ██                           
+//  ██████  ██   ██  ███████  ███████                     
+
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+    if (_logLevel >= debug) {
+        NSLog(@"[FBP-iOS] handleMethodCall: %@", call.method);
+    }
+  
   if ([@"setLogLevel" isEqualToString:call.method]) {
     NSNumber *logLevelIndex = [call arguments];
     _logLevel = (LogLevel)[logLevelIndex integerValue];
-    result(nil);
+    result(@(true));
     return;
   }
   if (self.centralManager == nil) {
     self.centralManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
   }
   if ([@"state" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [self toFlutterData:[self toBluetoothStateProto:self->_centralManager.state]];
+    NSDictionary *data = [self toBluetoothStateProto:self->_centralManager.state];
     result(data);
   } else if([@"isAvailable" isEqualToString:call.method]) {
     if(self.centralManager.state != CBManagerStateUnsupported && self.centralManager.state != CBManagerStateUnknown) {
@@ -89,65 +111,72 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   } else if([@"startScan" isEqualToString:call.method]) {
     // Clear any existing scan results
     [self.scannedPeripherals removeAllObjects];
-    // TODO: Request Permission?
+    // See BmScanSettings
+    NSDictionary *args = (NSDictionary*)call.arguments;
+    NSArray   *serviceUuids    = args[@"service_uuids"];
+    NSNumber  *allowDuplicates = args[@"allow_duplicates"];
     FlutterStandardTypedData *data = [call arguments];
     ProtosScanSettings *request = [[ProtosScanSettings alloc] initWithData:[data data] error:nil];
     // UUID Service filter
     NSArray *uuids = [NSArray array];
-    for (int i = 0; i < [request serviceUuidsArray_Count]; i++) {
-      NSString *u = [request.serviceUuidsArray objectAtIndex:i];
+    for (int i = 0; i < [serviceUuids count]; i++) {
+      NSString *u = serviceUuids[i];
       uuids = [uuids arrayByAddingObject:[CBUUID UUIDWithString:u]];
     }
     NSMutableDictionary<NSString *, id> *scanOpts = [NSMutableDictionary new];
-    if (request.allowDuplicates) {
+    if ([allowDuplicates boolValue]) {
         [scanOpts setObject:[NSNumber numberWithBool:YES] forKey:CBCentralManagerScanOptionAllowDuplicatesKey];
     }
+    // Start scanning
     [self->_centralManager scanForPeripheralsWithServices:uuids options:scanOpts];
-    result(nil);
+    result(@(true));
   } else if([@"stopScan" isEqualToString:call.method]) {
     [self->_centralManager stopScan];
-    result(nil);
+    result(@(true));
   } else if([@"getConnectedDevices" isEqualToString:call.method]) {
     // Cannot pass blank UUID list for security reasons. Assume all devices have the Generic Access service 0x1800
-    NSArray *periphs = [self->_centralManager retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"1800"]]];
+    NSArray *periphs = [self->_centralManager retrieveConnectedPeripheralsWithServices:@[ [CBUUID UUIDWithString:@"1800"] ]];
     NSLog(@"getConnectedDevices periphs size: %lu", (unsigned long)[periphs count]);
     [self log:debug format:[NSString stringWithFormat:@"getConnectedDevices periphs size: %lu", [periphs count]]];
-    result([self toFlutterData:[self toConnectedDeviceResponseProto:periphs]]);
+    result([self toConnectedDeviceResponseProto:periphs]);
   } else if([@"connect" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosConnectRequest *request = [[ProtosConnectRequest alloc] initWithData:[data data] error:nil];
-    NSString *remoteId = [request remoteId];
+    // See BmConnectRequest
+    NSDictionary* args = (NSDictionary*)call.arguments;
+    NSString  *remoteId           = args[@"remote_id"];
+
     @try {
       CBPeripheral *peripheral = [_scannedPeripherals objectForKey:remoteId];
       if(peripheral == nil) {
-        @throw [FlutterError errorWithCode:@"connect"
-                                   message:@"Peripheral not found"
-                                   details:nil];
+        result([FlutterError errorWithCode:@"connect" message:@"Peripheral not found" details:nil]);
+        return;
       }
       // TODO: Implement Connect options (#36)
       [_centralManager connectPeripheral:peripheral options:nil];
-      result(nil);
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"connect" message:[e reason] details:NULL]);
     }
   } else if([@"disconnect" isEqualToString:call.method]) {
+    // remoteId is passed raw, not in a NSDictionary
     NSString *remoteId = [call arguments];
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       [_centralManager cancelPeripheralConnection:peripheral];
-      result(nil);
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"disconnect" message:[e reason] details:NULL]);
     }
   } else if([@"deviceState" isEqualToString:call.method]) {
+    // remoteId is passed raw, not in a NSDictionary
     NSString *remoteId = [call arguments];
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
-      result([self toFlutterData:[self toDeviceStateProto:peripheral state:peripheral.state]]);
+      result([self toDeviceStateProto:peripheral state:peripheral.state]);
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"deviceState" message:[e reason] details:NULL]);
     }
   } else if([@"discoverServices" isEqualToString:call.method]) {
+    // remoteId is passed raw, not in a NSDictionary
     NSString *remoteId = [call arguments];
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
@@ -155,121 +184,179 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [_servicesThatNeedDiscovered removeAllObjects];
       [_characteristicsThatNeedDiscovered removeAllObjects ];
       [peripheral discoverServices:nil];
-      result(nil);
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"discoverServices" message:[e reason] details:NULL]);
     }
   } else if([@"services" isEqualToString:call.method]) {
+    // remoteId is passed raw, not in a NSDictionary
     NSString *remoteId = [call arguments];
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
-      result([self toFlutterData:[self toServicesResultProto:peripheral]]);
+      result([self toServicesResultProto:peripheral]);
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"services" message:[e reason] details:NULL]);
     }
   } else if([@"readCharacteristic" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosReadCharacteristicRequest *request = [[ProtosReadCharacteristicRequest alloc] initWithData:[data data] error:nil];
-    NSString *remoteId = [request remoteId];
+    // See BmReadCharacteristicRequest
+    NSDictionary *args = (NSDictionary*)call.arguments;
+    NSString  *remoteId             = args[@"remote_id"];
+    NSString  *characteristicUuid   = args[@"characteristic_uuid"];
+    NSString  *serviceUuid          = args[@"service_uuid"];
+    NSString  *secondaryServiceUuid = args[@"secondary_service_uuid"];
+
     @try {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
       // Trigger a read
       [peripheral readValueForCharacteristic:characteristic];
-      result(nil);
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"readCharacteristic" message:[e reason] details:NULL]);
     }
   } else if([@"readDescriptor" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosReadDescriptorRequest *request = [[ProtosReadDescriptorRequest alloc] initWithData:[data data] error:nil];
-    NSString *remoteId = [request remoteId];
+    // See BmReadDescriptorRequest
+    NSDictionary *args = (NSDictionary*)call.arguments;
+    NSString  *remoteId             = args[@"remote_id"];
+    NSString  *descriptorUuid       = args[@"descriptor_uuid"];
+    NSString  *serviceUuid          = args[@"service_uuid"];
+    NSString  *secondaryServiceUuid = args[@"secondary_service_uuid"];
+    NSString  *characteristicUuid   = args[@"characteristic_uuid"];
     @try {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
       // Find descriptor
-      CBDescriptor *descriptor = [self locateDescriptor:[request descriptorUuid] characteristic:characteristic];
+      CBDescriptor *descriptor = [self locateDescriptor:descriptorUuid characteristic:characteristic];
       [peripheral readValueForDescriptor:descriptor];
-      result(nil);
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"readDescriptor" message:[e reason] details:NULL]);
     }
   } else if([@"writeCharacteristic" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] initWithData:[data data] error:nil];
-    NSString *remoteId = [request remoteId];
+    // See BmWriteCharacteristicRequest
+    NSDictionary *args = (NSDictionary*)call.arguments;
+    NSString  *remoteId             = args[@"remote_id"];
+    NSString  *characteristicUuid   = args[@"characteristic_uuid"];
+    NSString  *serviceUuid          = args[@"service_uuid"];
+    NSString  *secondaryServiceUuid = args[@"secondary_service_uuid"];
+    NSNumber  *writeType            = args[@"write_type"];
+    NSString   *value               = args[@"value"];
     @try {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid peripheral:peripheral serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
       // Get correct write type
-      CBCharacteristicWriteType type = ([request writeType] == ProtosWriteCharacteristicRequest_WriteType_WithoutResponse) ? CBCharacteristicWriteWithoutResponse : CBCharacteristicWriteWithResponse;
+      CBCharacteristicWriteType type = ([writeType intValue] == 0
+                    ? CBCharacteristicWriteWithResponse
+                    : CBCharacteristicWriteWithoutResponse);
       // Write to characteristic
-      [peripheral writeValue:[request value] forCharacteristic:characteristic type:type];
-      result(nil);
+      [peripheral writeValue:[self convertHexToData:value] forCharacteristic:characteristic type:type];
+      result(@(YES));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"writeCharacteristic" message:[e reason] details:NULL]);
     }
   } else if([@"writeDescriptor" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosWriteDescriptorRequest *request = [[ProtosWriteDescriptorRequest alloc] initWithData:[data data] error:nil];
-    NSString *remoteId = [request remoteId];
+    // See BmWriteDescriptorRequest
+    NSDictionary *args = (NSDictionary*)call.arguments;
+    NSString  *remoteId             = args[@"remote_id"];
+    NSString  *descriptorUuid       = args[@"descriptor_uuid"];
+    NSString  *serviceUuid          = args[@"service_uuid"];
+    NSString  *secondaryServiceUuid = args[@"secondary_service_uuid"];
+    NSString  *characteristicUuid   = args[@"characteristic_uuid"];
+    NSString  *value                = args[@"value"];
     @try {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid peripheral:peripheral serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
       // Find descriptor
-      CBDescriptor *descriptor = [self locateDescriptor:[request descriptorUuid] characteristic:characteristic];
+      CBDescriptor *descriptor = [self locateDescriptor:descriptorUuid characteristic:characteristic];
       // Write descriptor
-      [peripheral writeValue:[request value] forDescriptor:descriptor];
-      result(nil);
+      [peripheral writeValue:[self convertHexToData:value] forDescriptor:descriptor];
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"writeDescriptor" message:[e reason] details:NULL]);
     }
   } else if([@"setNotification" isEqualToString:call.method]) {
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosSetNotificationRequest *request = [[ProtosSetNotificationRequest alloc] initWithData:[data data] error:nil];
-    NSString *remoteId = [request remoteId];
+    // See BmSetNotificationRequest
+    NSDictionary *args = (NSDictionary*)call.arguments;
+    NSString   *remoteId              = args[@"remote_id"];
+    NSString   *serviceUuid           = args[@"service_uuid"];
+    NSString   *secondaryServiceUuid  = args[@"secondary_service_uuid"];
+    NSString   *characteristicUuid    = args[@"characteristic_uuid"];
+    NSNumber   *enable                = args[@"enable"];
     @try {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid peripheral:peripheral serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
       // Set notification value
-      [peripheral setNotifyValue:[request enable] forCharacteristic:characteristic];
-      result(nil);
+      [peripheral setNotifyValue:[enable boolValue] forCharacteristic:characteristic];
+       result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"setNotification" message:[e reason] details:NULL]);
     }
   } else if([@"mtu" isEqualToString:call.method]) {
+    // remoteId is passed raw, not in a NSDictionary
     NSString *remoteId = [call arguments];
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       uint32_t mtu = [self getMtu:peripheral];
-      result([self toFlutterData:[self toMtuSizeResponseProto:peripheral mtu:mtu]]);
+      result([self toMtuSizeResponseProto:peripheral mtu:mtu]);
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"mtu" message:[e reason] details:NULL]);
     }
   } else if([@"requestMtu" isEqualToString:call.method]) {
     result([FlutterError errorWithCode:@"requestMtu" message:@"iOS does not allow mtu requests to the peripheral" details:NULL]);
   } else if([@"readRssi" isEqualToString:call.method]) {
+    // remoteId is passed raw, not in a NSDictionary
     NSString *remoteId = [call arguments];
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       [peripheral readRSSI];
-      result(nil);
+      result(@(true));
     } @catch(FlutterError *e) {
-      result(e);
+      result([FlutterError errorWithCode:@"readRssi" message:[e reason] details:NULL]);
     }
   } else {
     result(FlutterMethodNotImplemented);
   }
+}
+
+//////////////////////////////////////////////////////////////////////
+// ██████   ██████   ██  ██    ██   █████   ████████  ███████ 
+// ██   ██  ██   ██  ██  ██    ██  ██   ██     ██     ██      
+// ██████   ██████   ██  ██    ██  ███████     ██     █████   
+// ██       ██   ██  ██   ██  ██   ██   ██     ██     ██      
+// ██       ██   ██  ██    ████    ██   ██     ██     ███████
+//
+// ██    ██  ████████  ██  ██       ███████ 
+// ██    ██     ██     ██  ██       ██      
+// ██    ██     ██     ██  ██       ███████ 
+// ██    ██     ██     ██  ██            ██ 
+//  ██████      ██     ██  ███████  ███████ 
+
+- (NSData *)convertHexToData:(NSString *)hexString
+{
+    if (hexString.length % 2 != 0) {
+        return nil;
+    }
+
+    NSMutableData *data = [NSMutableData new];
+
+    for (NSInteger i = 0; i < hexString.length; i += 2) {
+        unsigned int byte = 0;
+        NSRange range = NSMakeRange(i, 2);
+        [[NSScanner scannerWithString:[hexString substringWithRange:range]] scanHexInt:&byte];
+        [data appendBytes:&byte length:1];
+    }
+
+    return [data copy];
 }
 
 - (CBPeripheral*)findPeripheral:(NSString*)remoteId {
@@ -371,21 +458,42 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   return nil;
 }
 
-//
-// CBCentralManagerDelegate methods
-//
+
+/////////////////////////////////////////////////////////////////////////////////////
+//  ██████  ██████    ██████  ███████  ███    ██  ████████  ██████    █████  ██      
+// ██       ██   ██  ██       ██       ████   ██     ██     ██   ██  ██   ██ ██      
+// ██       ██████   ██       █████    ██ ██  ██     ██     ██████   ███████ ██      
+// ██       ██   ██  ██       ██       ██  ██ ██     ██     ██   ██  ██   ██ ██      
+//  ██████  ██████    ██████  ███████  ██   ████     ██     ██   ██  ██   ██ ███████ 
+//                                                                                                                                          
+// ███    ███   █████   ███    ██   █████    ██████   ███████  ██████               
+// ████  ████  ██   ██  ████   ██  ██   ██  ██        ██       ██   ██              
+// ██ ████ ██  ███████  ██ ██  ██  ███████  ██   ███  █████    ██████               
+// ██  ██  ██  ██   ██  ██  ██ ██  ██   ██  ██    ██  ██       ██   ██              
+// ██      ██  ██   ██  ██   ████  ██   ██   ██████   ███████  ██   ██              
+//                                                                                                                                                   
+// ██████   ███████  ██       ███████   ██████    █████   ████████  ███████          
+// ██   ██  ██       ██       ██       ██        ██   ██     ██     ██               
+// ██   ██  █████    ██       █████    ██   ███  ███████     ██     █████            
+// ██   ██  ██       ██       ██       ██    ██  ██   ██     ██     ██               
+// ██████   ███████  ███████  ███████   ██████   ██   ██     ██     ███████ 
+
 - (void)centralManagerDidUpdateState:(nonnull CBCentralManager *)central {
+  if (_logLevel >= debug) {
+    NSLog(@"[FBP-iOS] centralManagerDidUpdateState");
+  }
   if(_stateStreamHandler.sink != nil) {
-    FlutterStandardTypedData *data = [self toFlutterData:[self toBluetoothStateProto:self->_centralManager.state]];
+    NSDictionary *data = [self toBluetoothStateProto:self->_centralManager.state];
     self.stateStreamHandler.sink(data);
   }
 }
 
 - (void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
-  [self.scannedPeripherals setObject:peripheral
-                              forKey:[[peripheral identifier] UUIDString]];
-  ProtosScanResult *result = [self toScanResultProto:peripheral advertisementData:advertisementData RSSI:RSSI];
-  [_channel invokeMethod:@"ScanResult" arguments:[self toFlutterData:result]];
+  if (_logLevel >= debug) {
+    //NSLog(@"[FBP-iOS] centralManager didDiscoverPeripheral");
+  }
+  NSDictionary *result = [self toScanResultProto:peripheral advertisementData:advertisementData RSSI:RSSI];
+  [_channel invokeMethod:@"ScanResult" arguments:result];
 }
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral {
@@ -396,10 +504,10 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
   // Send initial mtu size
   uint32_t mtu = [self getMtu:peripheral];
-  [_channel invokeMethod:@"MtuSize" arguments:[self toFlutterData:[self toMtuSizeResponseProto:peripheral mtu:mtu]]];
+  [_channel invokeMethod:@"MtuSize" arguments:[self toMtuSizeResponseProto:peripheral mtu:mtu]];
 
   // Send connection state
-  [_channel invokeMethod:@"DeviceState" arguments:[self toFlutterData:[self toDeviceStateProto:peripheral state:peripheral.state]]];
+  [_channel invokeMethod:@"DeviceState" arguments:[self toDeviceStateProto:peripheral state:peripheral.state]];
 }
 
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
@@ -412,13 +520,14 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   peripheral.delegate = nil;
 
   // Send connection state
-  [_channel invokeMethod:@"DeviceState" arguments:[self toFlutterData:[self toDeviceStateProto:peripheral state:peripheral.state]]];
+  [_channel invokeMethod:@"DeviceState" arguments:[self toDeviceStateProto:peripheral state:peripheral.state]];
 }
 
 - (void)centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
   // TODO:?
    //エラーコードを送るようにする
   [self log:debug format:[NSString stringWithFormat:@"didFailToConnectPeripheral: %@,%d", error, [error code]]];
+  [_channel invokeMethod:@"DeviceState" arguments:[self toDeviceStateProto:peripheral state:peripheral.state]];
 }
 
 //
@@ -429,7 +538,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [self log:debug format:@"didDiscoverServices"];
   // Send negotiated mtu size
   uint32_t mtu = [self getMtu:peripheral];
-  [_channel invokeMethod:@"MtuSize" arguments:[self toFlutterData:[self toMtuSizeResponseProto:peripheral mtu:mtu]]];
+  [_channel invokeMethod:@"MtuSize" arguments:[self toMtuSizeResponseProto:peripheral mtu:mtu]];
 
   // Loop through and discover characteristics and secondary services
   [_servicesThatNeedDiscovered addObjectsFromArray:peripheral.services];
@@ -467,8 +576,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     return;
   }
   // Send updated tree
-  ProtosDiscoverServicesResult *result = [self toServicesResultProto:peripheral];
-  [_channel invokeMethod:@"DiscoverServicesResult" arguments:[self toFlutterData:result]];
+  NSDictionary* result = [self toServicesResultProto:peripheral];
+  [_channel invokeMethod:@"DiscoverServicesResult" arguments:result];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverIncludedServicesForService:(CBService *)service error:(NSError *)error {
@@ -485,20 +594,24 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]);
+  // on iOS, this method also handles notification values
   [self log:debug format:[NSString stringWithFormat:@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]]];
   if(error != NULL) {
     [self log:debug format:[NSString stringWithFormat:@"didUpdateValueForCharacteristic error: %@", error]];
   }
-  ProtosReadCharacteristicResponse *result = [[ProtosReadCharacteristicResponse alloc] init];
-  [result setRemoteId:[peripheral.identifier UUIDString]];
-  [result setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
-  [_channel invokeMethod:@"ReadCharacteristicResponse" arguments:[self toFlutterData:result]];
+  // See BmReadCharacteristicResponse
+  NSDictionary* result = @{
+    @"remote_id":       [peripheral.identifier UUIDString],
+    @"characteristic":  [self toCharacteristicProto:peripheral characteristic:characteristic],
+  };
+  [_channel invokeMethod:@"ReadCharacteristicResponse" arguments:result];
 
-  // on iOS, this method also handles notification values
-  ProtosOnCharacteristicChanged *onChangedResult = [[ProtosOnCharacteristicChanged alloc] init];
-  [onChangedResult setRemoteId:[peripheral.identifier UUIDString]];
-  [onChangedResult setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
-  [_channel invokeMethod:@"OnCharacteristicChanged" arguments:[self toFlutterData:onChangedResult]];
+  // See: BmOnCharacteristicChanged
+  NSDictionary* onChangedResult = @{
+    @"remote_id":       [peripheral.identifier UUIDString],
+    @"characteristic":  [self toCharacteristicProto:peripheral characteristic:characteristic],
+  };
+  [_channel invokeMethod:@"OnCharacteristicChanged" arguments:onChangedResult];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
@@ -507,14 +620,21 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   if(error != NULL) {
     [self log:debug format:[NSString stringWithFormat:@"didWriteValueForCharacteristic error: %@", error]];
   }
-  ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
-  [request setRemoteId:[peripheral.identifier UUIDString]];
-  [request setCharacteristicUuid:[characteristic.UUID fullUUIDString]];
-  [request setServiceUuid:[characteristic.service.UUID fullUUIDString]];
-  ProtosWriteCharacteristicResponse *result = [[ProtosWriteCharacteristicResponse alloc] init];
-  [result setRequest:request];
-  [result setSuccess:(error == nil)];
-  [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
+  // See BmWriteCharacteristicRequest
+  NSDictionary* request = @{
+    @"remote_id":              [peripheral.identifier UUIDString],
+    @"characteristic_uuid":    [characteristic.UUID fullUUIDString],
+    @"service_uuid":           [characteristic.service.UUID fullUUIDString],
+    @"secondary_service_uuid": [NSNull null],
+    @"write_type":             @(0),
+    @"value":                  @"",
+  };
+  // See BmWriteCharacteristicResponse
+  NSDictionary* result = @{
+    @"request": request,
+    @"success": @(error == nil),
+  };
+  [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:result];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
@@ -526,12 +646,13 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   // Read CCC descriptor of characteristic
   CBDescriptor *cccd = [self findCCCDescriptor:characteristic];
   if(cccd == nil || error != nil) {
-    // Send error
-    ProtosSetNotificationResponse *response = [[ProtosSetNotificationResponse alloc] init];
-    [response setRemoteId:[peripheral.identifier UUIDString]];
-    [response setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
-    [response setSuccess:false];
-    [_channel invokeMethod:@"SetNotificationResponse" arguments:[self toFlutterData:response]];
+    // See BmSetNotificationResponse
+    NSDictionary* response = @{
+        @"remote_id":      [peripheral.identifier UUIDString],
+        @"characteristic": [self toCharacteristicProto:peripheral characteristic:characteristic],
+        @"success":        @(false),
+    };
+    [_channel invokeMethod:@"SetNotificationResponse" arguments:response];
     return;
   }
 
@@ -543,30 +664,43 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   if(error != NULL) {
     [self log:debug format:[NSString stringWithFormat:@"didUpdateValueForDescriptor error: %@", error]];
   }
-  ProtosReadDescriptorRequest *q = [[ProtosReadDescriptorRequest alloc] init];
-  [q setRemoteId:[peripheral.identifier UUIDString]];
-  [q setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
-  [q setDescriptorUuid:[descriptor.UUID fullUUIDString]];
-  if([descriptor.characteristic.service isPrimary]) {
-    [q setServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
+  // primary & secondary service
+  CBService *primaryService = NULL;
+  CBService *secondaryService = NULL;
+  if ([descriptor.characteristic.service isPrimary]) {
+    primaryService = descriptor.characteristic.service;
+    secondaryService = NULL;
   } else {
-    [q setSecondaryServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
-    CBService *primaryService = [self findPrimaryService:[descriptor.characteristic service] peripheral:[descriptor.characteristic.service peripheral]];
-    [q setServiceUuid:[primaryService.UUID fullUUIDString]];
+    // Reverse search to find service and secondary service UUID
+    secondaryService = descriptor.characteristic.service;
+    primaryService = [self findPrimaryService:[descriptor.characteristic service]
+                                       peripheral:[descriptor.characteristic.service peripheral]];
   }
-  ProtosReadDescriptorResponse *result = [[ProtosReadDescriptorResponse alloc] init];
-  [result setRequest:q];
+  // See BmReadDescriptorRequest
+  NSDictionary* q = @{
+    @"remote_id":              [peripheral.identifier UUIDString],
+    @"descriptor_uuid":        [descriptor.UUID fullUUIDString],
+    @"service_uuid":           [primaryService.UUID fullUUIDString],
+    @"secondary_service_uuid": secondaryService ? [secondaryService.UUID fullUUIDString] : [NSNull null],
+    @"characteristic_uuid":    [descriptor.characteristic.UUID fullUUIDString],
+  };
   int value = [descriptor.value intValue];
-  [result setValue:[NSData dataWithBytes:&value length:sizeof(value)]];
-  [_channel invokeMethod:@"ReadDescriptorResponse" arguments:[self toFlutterData:result]];
+  // See BmReadDescriptorResponse
+  NSDictionary* result = @{
+    @"request": q,
+    @"value": [self convertDataToHex:[NSData dataWithBytes:&value length:sizeof(value)]],
+  };
+  [_channel invokeMethod:@"ReadDescriptorResponse" arguments:result];
 
   // If descriptor is CCCD, send a SetNotificationResponse in case anything is awaiting
   if([descriptor.UUID.UUIDString isEqualToString:@"2902"]){
-    ProtosSetNotificationResponse *response = [[ProtosSetNotificationResponse alloc] init];
-    [response setRemoteId:[peripheral.identifier UUIDString]];
-    [response setCharacteristic:[self toCharacteristicProto:peripheral characteristic:descriptor.characteristic]];
-    [response setSuccess:true];
-    [_channel invokeMethod:@"SetNotificationResponse" arguments:[self toFlutterData:response]];
+    // See BmSetNotificationResponse
+    NSDictionary* response = @{
+        @"remote_id":      [peripheral.identifier UUIDString],
+        @"characteristic": [self toCharacteristicProto:peripheral characteristic:descriptor.characteristic],
+        @"success":        @(true),
+    };
+    [_channel invokeMethod:@"SetNotificationResponse" arguments:response];
   }
 }
 
@@ -574,162 +708,209 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   if(error != NULL) {
     [self log:debug format:[NSString stringWithFormat:@"didWriteValueForDescriptor error: %@", error]];
   }
-  ProtosWriteDescriptorRequest *request = [[ProtosWriteDescriptorRequest alloc] init];
-  [request setRemoteId:[peripheral.identifier UUIDString]];
-  [request setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
-  [request setDescriptorUuid:[descriptor.UUID fullUUIDString]];
-  if([descriptor.characteristic.service isPrimary]) {
-    [request setServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
+  // primary & secondary service
+  CBService *primaryService = NULL;
+  CBService *secondaryService = NULL;
+  if ([descriptor.characteristic.service isPrimary]) {
+    primaryService = descriptor.characteristic.service;
+    secondaryService = NULL;
   } else {
-    [request setSecondaryServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
-    CBService *primaryService = [self findPrimaryService:[descriptor.characteristic service] peripheral:[descriptor.characteristic.service peripheral]];
-    [request setServiceUuid:[primaryService.UUID fullUUIDString]];
+    // Reverse search to find service and secondary service UUID
+    secondaryService = descriptor.characteristic.service;
+    primaryService = [self findPrimaryService:[descriptor.characteristic service]
+                                       peripheral:[descriptor.characteristic.service peripheral]];
   }
-  ProtosWriteDescriptorResponse *result = [[ProtosWriteDescriptorResponse alloc] init];
-  [result setRequest:request];
-  [result setSuccess:(error == nil)];
-  [_channel invokeMethod:@"WriteDescriptorResponse" arguments:[self toFlutterData:result]];
+
+  // See BmWriteDescriptorRequest
+  NSDictionary* request = @{
+    @"remote_id":               [peripheral.identifier UUIDString],
+    @"descriptor_uuid":         [descriptor.UUID fullUUIDString],
+    @"service_uuid" :           [primaryService.UUID fullUUIDString],
+    @"secondary_service_uuid":  secondaryService ? [secondaryService.UUID fullUUIDString] : [NSNull null],
+    @"characteristic_uuid":     [descriptor.characteristic.UUID fullUUIDString],
+    @"value":                   @"",
+  };
+
+  // See BmWriteDescriptorResponse
+  NSDictionary* result = @{
+    @"request": request,
+    @"success": @(error == nil),
+  };
+
+  [_channel invokeMethod:@"WriteDescriptorResponse" arguments:result];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didReadRSSI:(NSNumber *)rssi error:(NSError *)error {
   if(error != NULL) {
     [self log:debug format:[NSString stringWithFormat:@"didReadRSSI error: %@", error]];
   }
-  ProtosReadRssiResult *result = [[ProtosReadRssiResult alloc] init];
-  [result setRemoteId:[peripheral.identifier UUIDString]];
-  [result setRssi:[rssi intValue]];
-  [_channel invokeMethod:@"ReadRssiResult" arguments:[self toFlutterData:result]];
+  // See BmReadRssiResult
+  NSDictionary* result = @{
+    @"remote_id": [peripheral.identifier UUIDString],
+    @"rssi": rssi,
+  };
+  [_channel invokeMethod:@"ReadRssiResult" arguments:result];
 }
 
-//
-// Proto Helper methods
-//
-- (FlutterStandardTypedData*)toFlutterData:(GPBMessage*)proto {
-  FlutterStandardTypedData *data = [FlutterStandardTypedData typedDataWithBytes:[[proto data] copy]];
-  return data;
-}
+//////////////////////////////////////////////////////////////////////
+// ███    ███  ███████   ██████      
+// ████  ████  ██       ██           
+// ██ ████ ██  ███████  ██   ███     
+// ██  ██  ██       ██  ██    ██     
+// ██      ██  ███████   ██████ 
+//     
+// ██   ██  ███████  ██       ██████   ███████  ██████   ███████ 
+// ██   ██  ██       ██       ██   ██  ██       ██   ██  ██      
+// ███████  █████    ██       ██████   █████    ██████   ███████ 
+// ██   ██  ██       ██       ██       ██       ██   ██       ██ 
+// ██   ██  ███████  ███████  ██       ███████  ██   ██  ███████ 
 
-- (ProtosBluetoothState*)toBluetoothStateProto:(CBManagerState)state {
-  ProtosBluetoothState *result = [[ProtosBluetoothState alloc] init];
-  switch(state) {
-    case CBManagerStateResetting:
-      [result setState:ProtosBluetoothState_State_TurningOn];
-      break;
-    case CBManagerStateUnsupported:
-      [result setState:ProtosBluetoothState_State_Unavailable];
-      break;
-    case CBManagerStateUnauthorized:
-      [result setState:ProtosBluetoothState_State_Unauthorized];
-      break;
-    case CBManagerStatePoweredOff:
-      [result setState:ProtosBluetoothState_State_Off];
-      break;
-    case CBManagerStatePoweredOn:
-      [result setState:ProtosBluetoothState_State_On];
-      break;
-    default:
-      [result setState:ProtosBluetoothState_State_Unknown];
-      break;
-  }
-  return result;
-}
 
-- (ProtosScanResult*)toScanResultProto:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
-  ProtosScanResult *result = [[ProtosScanResult alloc] init];
-  [result setDevice:[self toDeviceProto:peripheral]];
-  [result setRssi:[RSSI intValue]];
-  ProtosAdvertisementData *ads = [[ProtosAdvertisementData alloc] init];
-  [ads setConnectable:[advertisementData[CBAdvertisementDataIsConnectable] boolValue]];
-  [ads setLocalName:advertisementData[CBAdvertisementDataLocalNameKey]];
-  // Tx Power Level
-  NSNumber *txPower = advertisementData[CBAdvertisementDataTxPowerLevelKey];
-  if(txPower != nil) {
-    ProtosInt32Value *txPowerWrapper = [[ProtosInt32Value alloc] init];
-    [txPowerWrapper setValue:[txPower intValue]];
-    [ads setTxPowerLevel:txPowerWrapper];
-  }
-  // Manufacturer Specific Data
-  NSData *manufData = advertisementData[CBAdvertisementDataManufacturerDataKey];
-  if(manufData != nil && manufData.length > 2) {
-    unsigned short manufacturerId;
-    [manufData getBytes:&manufacturerId length:2];
-    [[ads manufacturerData] setObject:[manufData subdataWithRange:NSMakeRange(2, manufData.length - 2)] forKey:manufacturerId];
-  }
-  // Service Data
-  NSDictionary *serviceData = advertisementData[CBAdvertisementDataServiceDataKey];
-  if(serviceData != nil) {
-    for (CBUUID *uuid in serviceData) {
-      [[ads serviceData] setObject:serviceData[uuid] forKey:uuid.UUIDString];
+- (NSString *)convertDataToHex:(NSData *)data 
+{
+    const unsigned char *bytes = (const unsigned char *)[data bytes];
+    NSMutableString *hexString = [NSMutableString new];
+
+    for (NSInteger i = 0; i < data.length; i++) {
+        [hexString appendFormat:@"%02x", bytes[i]];
     }
+
+    return [hexString copy];
+}
+
+- (NSDictionary*)toBluetoothStateProto:(CBManagerState)state {
+  int value = 0;
+  switch(state) {
+    case CBManagerStateResetting:    value = 3; break; // BmPowerEnum.turningOn
+    case CBManagerStateUnsupported:  value = 1; break; // BmPowerEnum.unavailable
+    case CBManagerStateUnauthorized: value = 2; break; // BmPowerEnum.unauthorized
+    case CBManagerStatePoweredOff:   value = 6; break; // BmPowerEnum.off
+    case CBManagerStatePoweredOn:    value = 4; break; // BmPowerEnum.on
+    default:                         value = 0; break; // BmPowerEnum.unknown
   }
-  // Service Uuids
-  NSArray *serviceUuids = advertisementData[CBAdvertisementDataServiceUUIDsKey];
-  if(serviceUuids != nil) {
+
+  // See BmBluetoothPowerState
+  return @{
+    @"state" : @(value),
+  };
+}
+
+- (NSDictionary*)toScanResultProto:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
+  NSString     *localName      = advertisementData[CBAdvertisementDataLocalNameKey];
+  NSNumber     *connectable    = advertisementData[CBAdvertisementDataIsConnectable];
+  NSData       *manufData      = advertisementData[CBAdvertisementDataManufacturerDataKey];
+  NSNumber     *txPower        = advertisementData[CBAdvertisementDataTxPowerLevelKey];
+  NSArray      *serviceUuids   = advertisementData[CBAdvertisementDataServiceUUIDsKey];
+  NSDictionary *serviceData    = advertisementData[CBAdvertisementDataServiceDataKey];
+  // Manufacturer Data
+  NSDictionary* manufDataB = nil;
+  if (manufData != nil && manufData.length > 2) {
+
+    // first 2 bytes are manufacturerId
+    unsigned short manufId = 0;
+    [manufData getBytes:&manufId length:2];
+
+    // trim off first 2 bytes
+    NSData* trimmed = [manufData subdataWithRange:NSMakeRange(2, manufData.length - 2)];
+    NSString* hex = [self convertDataToHex:trimmed];
+
+    manufDataB = @{
+        @(manufId): hex,
+    };
+  }
+  // Service Uuids - convert from CBUUID's to UUID strings
+  NSArray *serviceUuidsB = nil;
+  if (serviceData != nil) {
+    NSMutableArray *mutable = [[NSMutableArray alloc] init];
     for (CBUUID *uuid in serviceUuids) {
-      [[ads serviceUuidsArray] addObject:uuid.UUIDString];
+        [mutable addObject:uuid.UUIDString];
     }
+    serviceUuidsB = [mutable copy];
   }
-  [result setAdvertisementData:ads];
-  return result;
+  /// Service Data - convert from CBUUID's to UUID strings
+  NSDictionary *serviceDataB = nil;
+  if (serviceData != nil)
+  {
+    NSMutableDictionary *mutable = [[NSMutableDictionary alloc] init];
+    for (CBUUID *uuid in serviceData) {
+        NSString* hex = [self convertDataToHex:serviceData[uuid]];
+        [mutable setObject:hex forKey:uuid.UUIDString];
+    }
+    serviceDataB = [mutable copy];
+  }
+  // See BmAdvertisementData
+  NSDictionary* ad = @{
+    @"local_name":         localName     ? localName     : [NSNull null],
+    @"tx_power_level":     txPower       ? txPower       : [NSNull null],
+    @"connectable":        connectable   ? connectable   : @(0),
+    @"manufacturer_data":  manufDataB    ? manufDataB    : [NSNull null],
+    @"service_uuids":      serviceUuidsB ? serviceUuidsB : [NSNull null],
+    @"service_data":       serviceDataB  ? serviceDataB  : [NSNull null],
+  };
+
+  // See BmScanResult
+  return @{
+    @"device":             [self toDeviceProto:peripheral],
+    @"advertisement_data": ad,
+    @"rssi":               RSSI ? RSSI : [NSNull null],
+  };
 }
 
-- (ProtosBluetoothDevice*)toDeviceProto:(CBPeripheral *)peripheral {
-  ProtosBluetoothDevice *result = [[ProtosBluetoothDevice alloc] init];
-  [result setName:[peripheral name]];
-  [result setRemoteId:[[peripheral identifier] UUIDString]];
-  [result setType:ProtosBluetoothDevice_Type_Le]; // TODO: Does iOS differentiate?
-  return result;
+- (NSDictionary*)toDeviceProto:(CBPeripheral *)peripheral {
+  // See BmBluetoothDevice
+  return @{
+    @"remote_id": [[peripheral identifier] UUIDString],
+    @"name":      [peripheral name] ? [peripheral name] : [NSNull null],
+    @"type":      @(2), // hardcode to BLE. Does iOS differentiate?
+  };
 }
 
-- (ProtosDeviceStateResponse*)toDeviceStateProto:(CBPeripheral *)peripheral state:(CBPeripheralState)state {
-  ProtosDeviceStateResponse *result = [[ProtosDeviceStateResponse alloc] init];
+- (NSDictionary *)toDeviceStateProto:(CBPeripheral *)peripheral state:(CBPeripheralState)state {
+  int stateIdx = 0;
   switch(state) {
-    case CBPeripheralStateDisconnected:
-      [result setState:ProtosDeviceStateResponse_BluetoothDeviceState_Disconnected];
-      break;
-    case CBPeripheralStateConnecting:
-      [result setState:ProtosDeviceStateResponse_BluetoothDeviceState_Connecting];
-      break;
-    case CBPeripheralStateConnected:
-      [result setState:ProtosDeviceStateResponse_BluetoothDeviceState_Connected];
-      break;
-    case CBPeripheralStateDisconnecting:
-      [result setState:ProtosDeviceStateResponse_BluetoothDeviceState_Disconnecting];
-      break;
+    case CBPeripheralStateDisconnected:  stateIdx = 0; break; // BmConnectionStateEnum.disconnected
+    case CBPeripheralStateConnecting:    stateIdx = 1; break; // BmConnectionStateEnum.connecting
+    case CBPeripheralStateConnected:     stateIdx = 2; break; // BmConnectionStateEnum.connected
+    case CBPeripheralStateDisconnecting: stateIdx = 3; break; // BmConnectionStateEnum.disconnecting
   }
-  [result setRemoteId:[[peripheral identifier] UUIDString]];
-  return result;
+
+  // See BmConnectionStateResponse
+  return @{
+    @"remote_id": [[peripheral identifier] UUIDString],
+    @"state":     @(stateIdx),
+  };
 }
 
-- (ProtosDiscoverServicesResult*)toServicesResultProto:(CBPeripheral *)peripheral {
-  ProtosDiscoverServicesResult *result = [[ProtosDiscoverServicesResult alloc] init];
-  [result setRemoteId:[peripheral.identifier UUIDString]];
+- (NSDictionary*)toServicesResultProto:(CBPeripheral *)peripheral {
+  // Services
   NSMutableArray *servicesProtos = [NSMutableArray new];
   for(CBService *s in [peripheral services]) {
     [servicesProtos addObject:[self toServiceProto:peripheral service:s]];
   }
-  [result setServicesArray:servicesProtos];
-  return result;
+  // See BmDiscoverServicesResult
+  return @{
+    @"remote_id": [peripheral.identifier UUIDString],
+    @"services":  servicesProtos,
+  };
 }
 
-- (ProtosConnectedDevicesResponse*)toConnectedDeviceResponseProto:(NSArray<CBPeripheral*>*)periphs {
-  ProtosConnectedDevicesResponse *result = [[ProtosConnectedDevicesResponse alloc] init];
+- (NSDictionary*)toConnectedDeviceResponseProto:(NSArray<CBPeripheral*>*)periphs {
+  // Devices
   NSMutableArray *deviceProtos = [NSMutableArray new];
   for(CBPeripheral *p in periphs) {
     [deviceProtos addObject:[self toDeviceProto:p]];
   }
-  [result setDevicesArray:deviceProtos];
-  return result;
+  // See BmConnectedDevicesResponse
+  return @{
+    @"devices": deviceProtos,
+  };
 }
 
-- (ProtosBluetoothService*)toServiceProto:(CBPeripheral *)peripheral service:(CBService *)service  {
-  ProtosBluetoothService *result = [[ProtosBluetoothService alloc] init];
+- (NSDictionary*)toServiceProto:(CBPeripheral *)peripheral service:(CBService *)service  {
+  // Characteristics
   NSLog(@"peripheral uuid:%@", [peripheral.identifier UUIDString]);
   NSLog(@"service uuid:%@", [service.UUID fullUUIDString]);
   [self log:debug format:[NSString stringWithFormat:@"peripheral uuid:%@, service uuid:%@", [peripheral.identifier UUIDString], [service.UUID fullUUIDString]]];
-  [result setRemoteId:[peripheral.identifier UUIDString]];
-  [result setUuid:[service.UUID fullUUIDString]];
-  [result setIsPrimary:[service isPrimary]];
 
   // Characteristic Array
   NSMutableArray *characteristicProtos = [NSMutableArray new];
@@ -738,71 +919,95 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   }
   [result setCharacteristicsArray:characteristicProtos];
 
-  // Included Services Array
+  // Included Services
   NSMutableArray *includedServicesProtos = [NSMutableArray new];
   for(CBService *s in [service includedServices]) {
     [includedServicesProtos addObject:[self toServiceProto:peripheral service:s]];
   }
-  [result setIncludedServicesArray:includedServicesProtos];
 
-  return result;
+  // See BmBluetoothService
+  return @{
+    @"uuid":                [service.UUID fullUUIDString],
+    @"remote_id":           [peripheral.identifier UUIDString],
+    @"is_primary":          @([service isPrimary]),
+    @"characteristics":     characteristicProtos,
+    @"included_services":   includedServicesProtos,
+  };
 }
 
-- (ProtosBluetoothCharacteristic*)toCharacteristicProto:(CBPeripheral *)peripheral characteristic:(CBCharacteristic *)characteristic {
-  ProtosBluetoothCharacteristic *result = [[ProtosBluetoothCharacteristic alloc] init];
-  [result setUuid:[characteristic.UUID fullUUIDString]];
-  [result setRemoteId:[peripheral.identifier UUIDString]];
-  [result setProperties:[self toCharacteristicPropsProto:characteristic.properties]];
-  [result setValue:[characteristic value]];
+- (NSDictionary*)toCharacteristicProto:(CBPeripheral *)peripheral characteristic:(CBCharacteristic *)characteristic {
+  // descriptors
   NSLog(@"uuid: %@ value: %@", [characteristic.UUID fullUUIDString], [characteristic value]);
   NSMutableArray *descriptorProtos = [NSMutableArray new];
   for(CBDescriptor *d in [characteristic descriptors]) {
     [descriptorProtos addObject:[self toDescriptorProto:peripheral descriptor:d]];
   }
-  [result setDescriptorsArray:descriptorProtos];
-  if([characteristic.service isPrimary]) {
-    [result setServiceUuid:[characteristic.service.UUID fullUUIDString]];
+  // primary & secondary service
+  CBService *primaryService = NULL;
+  CBService *secondaryService = NULL;
+  if ([characteristic.service isPrimary]) {
+    primaryService = characteristic.service;
+    secondaryService = NULL;
   } else {
     // Reverse search to find service and secondary service UUID
-    [result setSecondaryServiceUuid:[characteristic.service.UUID fullUUIDString]];
-    CBService *primaryService = [self findPrimaryService:[characteristic service] peripheral:[characteristic.service peripheral]];
-    [result setServiceUuid:[primaryService.UUID fullUUIDString]];
+    secondaryService = characteristic.service;
+    primaryService = [self findPrimaryService:[characteristic service]
+                                       peripheral:[characteristic.service peripheral]];
   }
-  return result;
+
+  // See BmBluetoothCharacteristic
+  return @{
+    @"uuid":                   [characteristic.UUID fullUUIDString],
+    @"remote_id":              [peripheral.identifier UUIDString],
+    @"service_uuid":           [primaryService.UUID fullUUIDString],
+    @"secondary_service_uuid": secondaryService ? [secondaryService.UUID fullUUIDString] : [NSNull null],
+    @"descriptors":            descriptorProtos,
+    @"properties":             [self toCharacteristicPropsProto:characteristic.properties],
+    @"value":                  [self convertDataToHex:[characteristic value]],
+  };
 }
 
-- (ProtosBluetoothDescriptor*)toDescriptorProto:(CBPeripheral *)peripheral descriptor:(CBDescriptor *)descriptor {
-  ProtosBluetoothDescriptor *result = [[ProtosBluetoothDescriptor alloc] init];
-  [result setUuid:[descriptor.UUID fullUUIDString]];
-  [result setRemoteId:[peripheral.identifier UUIDString]];
-  [result setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
-  [result setServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
-  int value = [descriptor.value intValue];
-  [result setValue:[NSData dataWithBytes:&value length:sizeof(value)]];
-  return result;
+- (NSDictionary*)toDescriptorProto:(CBPeripheral *)peripheral descriptor:(CBDescriptor *)descriptor {
+  // See: BmBluetoothDescriptor
+  return @{
+    @"uuid":                   [descriptor.UUID fullUUIDString],
+    @"remote_id":              [peripheral.identifier UUIDString],
+    @"characteristic_uuid":    [descriptor.characteristic.UUID fullUUIDString],
+    @"service_uuid":           [descriptor.characteristic.service.UUID fullUUIDString],
+    @"secondary_service_uuid": [NSNull null],
+    @"value":                  [self convertDataToHex:[NSData dataWithBytes:&value length:sizeof(value)]],
 }
 
-- (ProtosCharacteristicProperties*)toCharacteristicPropsProto:(CBCharacteristicProperties)props {
-  ProtosCharacteristicProperties *result = [[ProtosCharacteristicProperties alloc] init];
-  [result setBroadcast:(props & CBCharacteristicPropertyBroadcast) != 0];
-  [result setRead:(props & CBCharacteristicPropertyRead) != 0];
-  [result setWriteWithoutResponse:(props & CBCharacteristicPropertyWriteWithoutResponse) != 0];
-  [result setWrite:(props & CBCharacteristicPropertyWrite) != 0];
-  [result setNotify:(props & CBCharacteristicPropertyNotify) != 0];
-  [result setIndicate:(props & CBCharacteristicPropertyIndicate) != 0];
-  [result setAuthenticatedSignedWrites:(props & CBCharacteristicPropertyAuthenticatedSignedWrites) != 0];
-  [result setExtendedProperties:(props & CBCharacteristicPropertyExtendedProperties) != 0];
-  [result setNotifyEncryptionRequired:(props & CBCharacteristicPropertyNotifyEncryptionRequired) != 0];
-  [result setIndicateEncryptionRequired:(props & CBCharacteristicPropertyIndicateEncryptionRequired) != 0];
-  return result;
+- (NSDictionary*)toCharacteristicPropsProto:(CBCharacteristicProperties)props {
+  // See: BmCharacteristicProperties
+  return @{
+    @"broadcast":                    @((props & CBCharacteristicPropertyBroadcast) != 0),
+    @"read":                         @((props & CBCharacteristicPropertyRead) != 0),
+    @"write_without_response":       @((props & CBCharacteristicPropertyWriteWithoutResponse) != 0),
+    @"write":                        @((props & CBCharacteristicPropertyWrite) != 0),
+    @"notify":                       @((props & CBCharacteristicPropertyNotify) != 0),
+    @"indicate":                     @((props & CBCharacteristicPropertyIndicate) != 0),
+    @"authenticated_signed_writes":  @((props & CBCharacteristicPropertyAuthenticatedSignedWrites) != 0),
+    @"extended_properties":          @((props & CBCharacteristicPropertyExtendedProperties) != 0),
+    @"notify_encryption_required":   @((props & CBCharacteristicPropertyNotifyEncryptionRequired) != 0),
+    @"indicate_encryption_required": @((props & CBCharacteristicPropertyIndicateEncryptionRequired) != 0),
+  };
 }
 
-- (ProtosMtuSizeResponse*)toMtuSizeResponseProto:(CBPeripheral *)peripheral mtu:(uint32_t)mtu {
-  ProtosMtuSizeResponse *result = [[ProtosMtuSizeResponse alloc] init];
-  [result setRemoteId:[[peripheral identifier] UUIDString]];
-  [result setMtu:mtu];
-  return result;
+- (NSDictionary*)toMtuSizeResponseProto:(CBPeripheral *)peripheral mtu:(uint32_t)mtu {
+  // See: BmMtuSizeRequest
+  return @{
+    @"remote_id" : [[peripheral identifier] UUIDString],
+    @"mtu" : @(mtu),
+  };
 }
+
+//////////////////////////////////////////
+// ██    ██ ████████  ██  ██       ███████ 
+// ██    ██    ██     ██  ██       ██      
+// ██    ██    ██     ██  ██       ███████ 
+// ██    ██    ██     ██  ██            ██ 
+//  ██████     ██     ██  ███████  ███████ 
 
 - (void)log:(LogLevel)level format:(NSString *)format, ... {
   if(level <= _logLevel) {

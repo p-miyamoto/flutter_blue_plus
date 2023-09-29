@@ -80,20 +80,20 @@ class FlutterBluePlus {
   Stream<BluetoothState> get state async* {
     yield await _channel
         .invokeMethod('state')
-        .then((buffer) => protos.BluetoothState.fromBuffer(buffer))
-        .then((s) => BluetoothState.values[s.state.value]);
+        .then((buffer) => BmBluetoothPowerState.fromJson(buffer))
+        .then((s) => bmToBluetoothState(s.state));
 
     yield* _stateChannel
         .receiveBroadcastStream()
-        .map((buffer) => protos.BluetoothState.fromBuffer(buffer))
-        .map((s) => BluetoothState.values[s.state.value]);
+        .map((buffer) => BmBluetoothPowerState.fromJson(buffer))
+        .map((s) => bmToBluetoothState(s.state));
   }
 
   /// Retrieve a list of connected devices
   Future<List<BluetoothDevice>> get connectedDevices {
     return _channel
         .invokeMethod('getConnectedDevices')
-        .then((buffer) => protos.ConnectedDevicesResponse.fromBuffer(buffer))
+        .then((buffer) => BmConnectedDevicesResponse.fromJson(buffer))
         .then((p) => p.devices)
         .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
   }
@@ -102,7 +102,7 @@ class FlutterBluePlus {
   Future<List<BluetoothDevice>> get bondedDevices {
     return _channel
         .invokeMethod('getBondedDevices')
-        .then((buffer) => protos.ConnectedDevicesResponse.fromBuffer(buffer))
+        .then((buffer) => BmConnectedDevicesResponse.fromJson(buffer))
         .then((p) => p.devices)
         .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
   }
@@ -125,14 +125,17 @@ class FlutterBluePlus {
     ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
     List<Guid> withDevices = const [],
+    List<String> macAddresses = const [],
     Duration? timeout,
     bool allowDuplicates = false,
   }) async* {
-    var settings = protos.ScanSettings.create()
-      ..androidScanMode = scanMode.value
-      ..allowDuplicates = allowDuplicates
-      ..serviceUuids.addAll(withServices.map((g) => g.toString()).toList());
-
+    //TODO: macAddressは未使用
+    var settings = BmScanSettings(
+      androidScanMode: scanMode.value,
+      allowDuplicates: allowDuplicates,
+      macAddresses: macAddresses,
+      serviceUuids: withServices.map((g) => g.toString()).toList(),
+    );
     if (_isScanning.value == true) {
       throw Exception('Another scan is already in progress.');
     }
@@ -150,7 +153,7 @@ class FlutterBluePlus {
     _scanResults.add(<ScanResult>[]);
 
     try {
-      await _channel.invokeMethod('startScan', settings.writeToBuffer());
+      await _channel.invokeMethod('startScan', settings.toJson());
     } catch (e) {
       if (kDebugMode) {
         print('Error starting scan.');
@@ -165,7 +168,7 @@ class FlutterBluePlus {
         .map((m) => m.arguments)
         .takeUntil(Rx.merge(killStreams))
         .doOnDone(stopScan)
-        .map((buffer) => protos.ScanResult.fromBuffer(buffer))
+        .map((buffer) => BmScanResult.fromJson(buffer))
         .map((p) {
       final result = ScanResult.fromProto(p);
       final list = _scanResults.value;
@@ -260,6 +263,25 @@ enum BluetoothState {
   off
 }
 
+BluetoothState bmToBluetoothState(BmPowerEnum value) {
+  switch (value) {
+    case BmPowerEnum.unknown:
+      return BluetoothState.unknown;
+    case BmPowerEnum.unavailable:
+      return BluetoothState.unavailable;
+    case BmPowerEnum.unauthorized:
+      return BluetoothState.unauthorized;
+    case BmPowerEnum.turningOn:
+      return BluetoothState.turningOn;
+    case BmPowerEnum.on:
+      return BluetoothState.on;
+    case BmPowerEnum.turningOff:
+      return BluetoothState.turningOff;
+    case BmPowerEnum.off:
+      return BluetoothState.off;
+  }
+}
+
 class ScanMode {
   const ScanMode(this.value);
   static const lowPower = ScanMode(0);
@@ -285,7 +307,7 @@ class DeviceIdentifier {
 }
 
 class ScanResult {
-  ScanResult.fromProto(protos.ScanResult p)
+  ScanResult.fromProto(BmScanResult p)
       : device = BluetoothDevice.fromProto(p.device),
         advertisementData = AdvertisementData.fromProto(p.advertisementData),
         rssi = p.rssi;
@@ -318,14 +340,13 @@ class AdvertisementData {
   final Map<String, List<int>> serviceData;
   final List<String> serviceUuids;
 
-  AdvertisementData.fromProto(protos.AdvertisementData p)
-      : localName = p.localName,
-        txPowerLevel =
-            (p.txPowerLevel.hasValue()) ? p.txPowerLevel.value : null,
-        connectable = p.connectable,
-        manufacturerData = p.manufacturerData,
-        serviceData = p.serviceData,
-        serviceUuids = p.serviceUuids;
+  AdvertisementData.fromProto(BmAdvertisementData p)
+      : localName = p.localName ?? "",
+        txPowerLevel = p.txPowerLevel,
+        connectable = p.connectable ?? false,
+        manufacturerData = p.manufacturerData ?? {},
+        serviceData = p.serviceData ?? {},
+        serviceUuids = p.serviceUuids ?? [];
 
   @override
   String toString() {

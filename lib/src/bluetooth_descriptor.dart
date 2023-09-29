@@ -17,7 +17,7 @@ class BluetoothDescriptor {
 
   List<int> get lastValue => _value.value;
 
-  BluetoothDescriptor.fromProto(protos.BluetoothDescriptor p)
+  BluetoothDescriptor.fromProto(BmBluetoothDescriptor p)
       : uuid = Guid(p.uuid),
         deviceId = DeviceIdentifier(p.remoteId),
         serviceUuid = Guid(p.serviceUuid),
@@ -26,19 +26,21 @@ class BluetoothDescriptor {
 
   /// Retrieves the value of a specified descriptor
   Future<List<int>> read() async {
-    var request = protos.ReadDescriptorRequest.create()
-      ..remoteId = deviceId.toString()
-      ..descriptorUuid = uuid.toString()
-      ..characteristicUuid = characteristicUuid.toString()
-      ..serviceUuid = serviceUuid.toString();
+    var request = BmReadDescriptorRequest(
+      remoteId: deviceId.toString(),
+      descriptorUuid: uuid.toString(),
+      characteristicUuid: characteristicUuid.toString(),
+      secondaryServiceUuid: null,
+      serviceUuid: serviceUuid.toString(),
+    );
 
     await FlutterBluePlus.instance._channel
-        .invokeMethod('readDescriptor', request.writeToBuffer());
+        .invokeMethod('readDescriptor', request.toJson());
 
     return FlutterBluePlus.instance._methodStream
         .where((m) => m.method == "ReadDescriptorResponse")
         .map((m) => m.arguments)
-        .map((buffer) => protos.ReadDescriptorResponse.fromBuffer(buffer))
+        .map((buffer) => BmReadDescriptorResponse.fromJson(buffer))
         .where((p) =>
             (p.request.remoteId == request.remoteId) &&
             (p.request.descriptorUuid == request.descriptorUuid) &&
@@ -54,20 +56,22 @@ class BluetoothDescriptor {
 
   /// Writes the value of a descriptor
   Future<Null> write(List<int> value) async {
-    var request = protos.WriteDescriptorRequest.create()
-      ..remoteId = deviceId.toString()
-      ..descriptorUuid = uuid.toString()
-      ..characteristicUuid = characteristicUuid.toString()
-      ..serviceUuid = serviceUuid.toString()
-      ..value = value;
+    var request = BmWriteDescriptorRequest(
+      remoteId: deviceId.toString(),
+      descriptorUuid: uuid.toString(),
+      characteristicUuid: characteristicUuid.toString(),
+      serviceUuid: serviceUuid.toString(),
+      secondaryServiceUuid: null,
+      value: value,
+    );
 
     await FlutterBluePlus.instance._channel
-        .invokeMethod('writeDescriptor', request.writeToBuffer());
+        .invokeMethod('writeDescriptor', request.toJson());
 
     return FlutterBluePlus.instance._methodStream
         .where((m) => m.method == "WriteDescriptorResponse")
         .map((m) => m.arguments)
-        .map((buffer) => protos.WriteDescriptorResponse.fromBuffer(buffer))
+        .map((buffer) => BmWriteDescriptorResponse.fromJson(buffer))
         .where((p) =>
             (p.request.remoteId == request.remoteId) &&
             (p.request.descriptorUuid == request.descriptorUuid) &&
