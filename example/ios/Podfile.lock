@@ -5,7 +5,7 @@ PODS:
     - flutter_blue_plus/Protos (= 0.0.1)
   - flutter_blue_plus/Protos (0.0.1):
     - Flutter
-    - Protobuf (~> 3.11)
+    - Protobuf (~> 3.21)
   - Protobuf (3.19.1)
 
 DEPENDENCIES:
