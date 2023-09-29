@@ -17,8 +17,6 @@ final snackBarKeyA = GlobalKey<ScaffoldMessengerState>();
 final snackBarKeyB = GlobalKey<ScaffoldMessengerState>();
 final snackBarKeyC = GlobalKey<ScaffoldMessengerState>();
 final Map<DeviceIdentifier, ValueNotifier<bool>> isConnectingOrDisconnecting = {};
-final Map<DeviceIdentifier, StreamController<bool>> isDiscoveringServices = {};
-final Map<DeviceIdentifier, StreamController<List<BluetoothService>>> servicesStream = {};
 
 void main() {
   if (Platform.isAndroid) {
@@ -383,8 +381,6 @@ class DeviceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    servicesStream[device.remoteId] ??= StreamController<List<BluetoothService>>();
-    isDiscoveringServices[device.remoteId] ??= StreamController<bool>();
     return ScaffoldMessenger(
       key: snackBarKeyC,
       child: Scaffold(
@@ -393,7 +389,7 @@ class DeviceScreen extends StatelessWidget {
           actions: <Widget>[
             StreamBuilder<BluetoothConnectionState>(
               stream: device.connectionState,
-              initialData: BluetoothConnectionState.disconnected,
+              initialData: BluetoothConnectionState.connecting,
               builder: (c, snapshot) {
                 VoidCallback? onPressed;
                 String text;
@@ -475,7 +471,7 @@ class DeviceScreen extends StatelessWidget {
             children: <Widget>[
               StreamBuilder<BluetoothConnectionState>(
                 stream: device.connectionState,
-                initialData: BluetoothConnectionState.disconnected,
+                initialData: BluetoothConnectionState.connecting,
                 builder: (c, snapshot) => Column(
                   children: [
                     Padding(
@@ -501,7 +497,7 @@ class DeviceScreen extends StatelessWidget {
                       ),
                       title: Text('Device is ${snapshot.data.toString().split('.')[1]}.'),
                       trailing: StreamBuilder<bool>(
-                        stream: isDiscoveringServices[device.remoteId]!.stream,
+                        stream: device.isDiscoveringServices,
                         initialData: false,
                         builder: (c, snapshot) => IndexedStack(
                           index: (snapshot.data ?? false) ? 1 : 0,
@@ -509,12 +505,8 @@ class DeviceScreen extends StatelessWidget {
                             TextButton(
                               child: const Text("Get Services"),
                               onPressed: () async {
-                                isDiscoveringServices[device.remoteId] ??= StreamController<bool>();
-                                isDiscoveringServices[device.remoteId]!.add(true);
                                 try {
                                   await device.discoverServices();
-                                  servicesStream[device.remoteId] ??= StreamController<List<BluetoothService>>();
-                                  servicesStream[device.remoteId]!.add(device.servicesList ?? []);
                                   final snackBar = snackBarGood("Discover Services: Success");
                                   snackBarKeyC.currentState?.removeCurrentSnackBar();
                                   snackBarKeyC.currentState?.showSnackBar(snackBar);
@@ -523,7 +515,6 @@ class DeviceScreen extends StatelessWidget {
                                   snackBarKeyC.currentState?.removeCurrentSnackBar();
                                   snackBarKeyC.currentState?.showSnackBar(snackBar);
                                 }
-                                isDiscoveringServices[device.remoteId]!.add(false);
                               },
                             ),
                             const IconButton(
@@ -566,11 +557,11 @@ class DeviceScreen extends StatelessWidget {
                 ),
               ),
               StreamBuilder<List<BluetoothService>>(
-                stream: servicesStream[device.remoteId]!.stream,
+                stream: device.servicesStream,
                 initialData: const [],
                 builder: (c, snapshot) {
                   return Column(
-                    children: _buildServiceTiles(context, device.servicesList ?? []),
+                    children: _buildServiceTiles(context, snapshot.data ?? []),
                   );
                 },
               ),

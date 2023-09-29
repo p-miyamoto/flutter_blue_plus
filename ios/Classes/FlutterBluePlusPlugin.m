@@ -652,43 +652,37 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
         else if([@"requestConnectionPriority" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"requestConnectionPriority" 
-                                    message:@"android only"
-                                    details:NULL]);
-        }
-        else if([@"getPhySupport" isEqualToString:call.method])
-        {
-            result([FlutterError errorWithCode:@"getPhySupport" 
-                                    message:@"android only"
+                                    message:@"iOS does not support connection priority requests"
                                     details:NULL]);
         }
         else if([@"setPreferredPhy" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"setPreferredPhy" 
-                                    message:@"android only"
+                                    message:@"iOS does not support set preferred phy requests"
                                     details:NULL]);
         }
         else if([@"getBondedDevices" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"getBondedDevices" 
-                                    message:@"android only"
+                                    message:@"iOS does not support getting bonded devices"
                                     details:NULL]);
         }
         else if([@"createBond" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"setPreferredPhy" 
-                                    message:@"android only"
+                                    message:@"iOS does not support creating bonds"
                                     details:NULL]);
         }
         else if([@"removeBond" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"removeBond" 
-                                    message:@"android only"
+                                    message:@"plugin does not support removeBond function on iOS"
                                     details:NULL]);
         }
         else if([@"clearGattCache" isEqualToString:call.method])
         {
             result([FlutterError errorWithCode:@"clearGattCache" 
-                                    message:@"android only"
+                                    message:@"plugin does not support clearing gatt cache"
                                     details:NULL]);
         }
         else
@@ -1469,6 +1463,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 {
     return @{
         @"remote_id":   [[peripheral identifier] UUIDString],
+        @"type":        @(2), // hardcode to BLE. Does iOS differentiate?
     };
 }
 

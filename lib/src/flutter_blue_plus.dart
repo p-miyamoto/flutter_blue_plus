@@ -229,17 +229,6 @@ class FlutterBluePlus {
     _logColor = color;
   }
 
-  /// Request Bluetooth PHY support
-  static Future<PhySupport> getPhySupport() async {
-    // check android
-    if (Platform.isAndroid == false) {
-      throw FlutterBluePlusException(
-          ErrorPlatform.dart, "getPhySupport", FbpErrorCode.androidOnly.index, "android-only");
-    }
-
-    return await _invokeMethod('getPhySupport').then((args) => PhySupport.fromMap(args));
-  }
-
   static bool _isDeviceConnected(DeviceIdentifier remoteId) {
     if (_connectionStates[remoteId] == null) {
       return false;
@@ -525,20 +514,6 @@ class AdvertisementData {
         'serviceData: $serviceData, '
         'serviceUuids: $serviceUuids'
         '}';
-  }
-}
-
-class PhySupport {
-  final bool le2M;
-  final bool leCoded;
-
-  PhySupport({required this.le2M, required this.leCoded});
-
-  factory PhySupport.fromMap(Map<dynamic, dynamic> json) {
-    return PhySupport(
-      le2M: json['le_2M'],
-      leCoded: json['le_coded'],
-    );
   }
 }
 

@@ -998,24 +998,6 @@ public class FlutterBluePlusPlugin implements
                     break;
                 }
 
-                case "getPhySupport":
-                {
-                  if(Build.VERSION.SDK_INT < 26) { // Android 8.0 (August 2017)
-                        result.error("getPhySupport",
-                            "Only supported on devices >= API 26. This device == " +
-                            Build.VERSION.SDK_INT, null);
-                        break;
-                    }
-
-                    // see: PhySupport
-                    HashMap<String, Object> map = new HashMap<>();
-                    map.put("le_2M", mBluetoothAdapter.isLe2MPhySupported());
-                    map.put("le_coded", mBluetoothAdapter.isLeCodedPhySupported());
-
-                    result.success(map);
-                    break;
-                }
-
                 case "setPreferredPhy":
                 {
                     if(Build.VERSION.SDK_INT < 26) { // Android 8.0 (August 2017)
@@ -1917,6 +1899,7 @@ public class FlutterBluePlusPlugin implements
     HashMap<String, Object> bmBluetoothDevice(BluetoothDevice device) {
         HashMap<String, Object> map = new HashMap<>();
         map.put("remote_id", device.getAddress());
+        map.put("type", device.getType());
         return map;
     }
 
