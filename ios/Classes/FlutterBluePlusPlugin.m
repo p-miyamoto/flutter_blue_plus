@@ -115,8 +115,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     NSDictionary *args = (NSDictionary*)call.arguments;
     NSArray   *serviceUuids    = args[@"service_uuids"];
     NSNumber  *allowDuplicates = args[@"allow_duplicates"];
-    FlutterStandardTypedData *data = [call arguments];
-    ProtosScanSettings *request = [[ProtosScanSettings alloc] initWithData:[data data] error:nil];
     // UUID Service filter
     NSArray *uuids = [NSArray array];
     for (int i = 0; i < [serviceUuids count]; i++) {
@@ -209,11 +207,14 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid
+                                                               peripheral:peripheral
+                                                                serviceId:serviceUuid
+                                                       secondaryServiceId:secondaryServiceUuid];
       // Trigger a read
       [peripheral readValueForCharacteristic:characteristic];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result([FlutterError errorWithCode:@"readCharacteristic" message:[e reason] details:NULL]);
     }
   } else if([@"readDescriptor" isEqualToString:call.method]) {
@@ -228,12 +229,15 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       // Find characteristic
-      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid serviceId:serviceUuid secondaryServiceId:secondaryServiceUuid];
+      CBCharacteristic *characteristic = [self locateCharacteristic:characteristicUuid
+                                                               peripheral:peripheral
+                                                                serviceId:serviceUuid
+                                                       secondaryServiceId:secondaryServiceUuid];
       // Find descriptor
       CBDescriptor *descriptor = [self locateDescriptor:descriptorUuid characteristic:characteristic];
       [peripheral readValueForDescriptor:descriptor];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result([FlutterError errorWithCode:@"readDescriptor" message:[e reason] details:NULL]);
     }
   } else if([@"writeCharacteristic" isEqualToString:call.method]) {
@@ -257,7 +261,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       // Write to characteristic
       [peripheral writeValue:[self convertHexToData:value] forCharacteristic:characteristic type:type];
       result(@(YES));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result([FlutterError errorWithCode:@"writeCharacteristic" message:[e reason] details:NULL]);
     }
   } else if([@"writeDescriptor" isEqualToString:call.method]) {
