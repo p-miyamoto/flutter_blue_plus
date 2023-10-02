@@ -921,7 +921,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   for(CBCharacteristic *c in [service characteristics]) {
     [characteristicProtos addObject:[self toCharacteristicProto:peripheral characteristic:c]];
   }
-  [result setCharacteristicsArray:characteristicProtos];
 
   // Included Services
   NSMutableArray *includedServicesProtos = [NSMutableArray new];
@@ -972,6 +971,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 }
 
 - (NSDictionary*)toDescriptorProto:(CBPeripheral *)peripheral descriptor:(CBDescriptor *)descriptor {
+  int value = [descriptor.value intValue];
+  
   // See: BmBluetoothDescriptor
   return @{
     @"uuid":                   [descriptor.UUID fullUUIDString],
@@ -980,6 +981,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     @"service_uuid":           [descriptor.characteristic.service.UUID fullUUIDString],
     @"secondary_service_uuid": [NSNull null],
     @"value":                  [self convertDataToHex:[NSData dataWithBytes:&value length:sizeof(value)]],
+  };
 }
 
 - (NSDictionary*)toCharacteristicPropsProto:(CBCharacteristicProperties)props {
