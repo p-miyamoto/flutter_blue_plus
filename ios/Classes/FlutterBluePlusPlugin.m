@@ -145,14 +145,16 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     @try {
       CBPeripheral *peripheral = [_scannedPeripherals objectForKey:remoteId];
       if(peripheral == nil) {
-        result([FlutterError errorWithCode:@"connect" message:@"Peripheral not found" details:nil]);
-        return;
+        //TODO: FlutterErrorではなく、NSExceptionを返す
+        [NSException raise:@"connect" format:@"Peripheral not found"];
+        //result([FlutterError errorWithCode:@"connect" message:@"Peripheral not found" details:nil]);
+        //return;
       }
       // TODO: Implement Connect options (#36)
       [_centralManager connectPeripheral:peripheral options:nil];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"connect" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"disconnect" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -162,7 +164,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [_centralManager cancelPeripheralConnection:peripheral];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"disconnect" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"deviceState" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -171,7 +173,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       result([self toDeviceStateProto:peripheral state:peripheral.state]);
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"deviceState" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"discoverServices" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -184,7 +186,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral discoverServices:nil];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"discoverServices" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"services" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -193,7 +195,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       result([self toServicesResultProto:peripheral]);
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"services" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"readCharacteristic" isEqualToString:call.method]) {
     // See BmReadCharacteristicRequest
@@ -215,7 +217,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral readValueForCharacteristic:characteristic];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"readCharacteristic" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"readDescriptor" isEqualToString:call.method]) {
     // See BmReadDescriptorRequest
@@ -238,7 +240,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral readValueForDescriptor:descriptor];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"readDescriptor" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"writeCharacteristic" isEqualToString:call.method]) {
     // See BmWriteCharacteristicRequest
@@ -262,7 +264,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral writeValue:[self convertHexToData:value] forCharacteristic:characteristic type:type];
       result(@(YES));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"writeCharacteristic" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"writeDescriptor" isEqualToString:call.method]) {
     // See BmWriteDescriptorRequest
@@ -284,7 +286,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral writeValue:[self convertHexToData:value] forDescriptor:descriptor];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"writeDescriptor" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"setNotification" isEqualToString:call.method]) {
     // See BmSetNotificationRequest
@@ -303,7 +305,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral setNotifyValue:[enable boolValue] forCharacteristic:characteristic];
        result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"setNotification" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"mtu" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -313,7 +315,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       uint32_t mtu = [self getMtu:peripheral];
       result([self toMtuSizeResponseProto:peripheral mtu:mtu]);
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"mtu" message:[e reason] details:NULL]);
+      result(e);
     }
   } else if([@"requestMtu" isEqualToString:call.method]) {
     result([FlutterError errorWithCode:@"requestMtu" message:@"iOS does not allow mtu requests to the peripheral" details:NULL]);
@@ -325,7 +327,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral readRSSI];
       result(@(true));
     } @catch(NSException *e) {
-      result([FlutterError errorWithCode:@"readRssi" message:[e reason] details:NULL]);
+      result(e);
     }
   } else {
     result(FlutterMethodNotImplemented);
