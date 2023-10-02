@@ -496,6 +496,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   if (_logLevel >= debug) {
     //NSLog(@"[FBP-iOS] centralManager didDiscoverPeripheral");
   }
+  [self.scannedPeripherals setObject:peripheral forKey:[[peripheral identifier] UUIDString]];
   NSDictionary *result = [self toScanResultProto:peripheral advertisementData:advertisementData RSSI:RSSI];
   [_channel invokeMethod:@"ScanResult" arguments:result];
 }
