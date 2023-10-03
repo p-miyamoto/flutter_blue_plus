@@ -146,12 +146,13 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [_scannedPeripherals objectForKey:remoteId];
       if(peripheral == nil) {
         //TODO: FlutterErrorではなく、NSExceptionを返す
-        @throw [FlutterError errorWithCode:@"connect" message:@"Peripheral not found" details:nil];
+        //@throw [FlutterError errorWithCode:@"connect" message:@"Peripheral not found" details:nil];
+        [NSException raise:@"connect" format:@"Peripheral not found"];
       }
       // TODO: Implement Connect options (#36)
       [_centralManager connectPeripheral:peripheral options:nil];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"disconnect" isEqualToString:call.method]) {
@@ -161,7 +162,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       [_centralManager cancelPeripheralConnection:peripheral];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"deviceState" isEqualToString:call.method]) {
@@ -170,7 +171,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       result([self toDeviceStateProto:peripheral state:peripheral.state]);
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"discoverServices" isEqualToString:call.method]) {
@@ -183,7 +184,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [_characteristicsThatNeedDiscovered removeAllObjects ];
       [peripheral discoverServices:nil];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"services" isEqualToString:call.method]) {
@@ -192,7 +193,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     @try {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       result([self toServicesResultProto:peripheral]);
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"readCharacteristic" isEqualToString:call.method]) {
@@ -213,8 +214,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
                                                        secondaryServiceId:secondaryServiceUuid];
       // Trigger a read
       [peripheral readValueForCharacteristic:characteristic];
-      result(@(true));
-    } @catch(FlutterError *e) {
+      result(nil);
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"readDescriptor" isEqualToString:call.method]) {
@@ -236,8 +237,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       // Find descriptor
       CBDescriptor *descriptor = [self locateDescriptor:descriptorUuid characteristic:characteristic];
       [peripheral readValueForDescriptor:descriptor];
-      result(@(true));
-    } @catch(FlutterError *e) {
+      result(nil);
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"writeCharacteristic" isEqualToString:call.method]) {
@@ -260,8 +261,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
                     : CBCharacteristicWriteWithoutResponse);
       // Write to characteristic
       [peripheral writeValue:[self convertHexToData:value] forCharacteristic:characteristic type:type];
-      result(@(YES));
-    } @catch(FlutterError *e) {
+      result(nil);
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"writeDescriptor" isEqualToString:call.method]) {
@@ -282,8 +283,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBDescriptor *descriptor = [self locateDescriptor:descriptorUuid characteristic:characteristic];
       // Write descriptor
       [peripheral writeValue:[self convertHexToData:value] forDescriptor:descriptor];
-      result(@(true));
-    } @catch(FlutterError *e) {
+      result(nil);
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"setNotification" isEqualToString:call.method]) {
@@ -302,7 +303,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       // Set notification value
       [peripheral setNotifyValue:[enable boolValue] forCharacteristic:characteristic];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"mtu" isEqualToString:call.method]) {
@@ -312,7 +313,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       uint32_t mtu = [self getMtu:peripheral];
       result([self toMtuSizeResponseProto:peripheral mtu:mtu]);
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else if([@"requestMtu" isEqualToString:call.method]) {
@@ -324,7 +325,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       [peripheral readRSSI];
       result(@(true));
-    } @catch(FlutterError *e) {
+    } @catch(NSException *e) {
       result(e);
     }
   } else {

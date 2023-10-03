@@ -7,7 +7,6 @@ library flutter_blue_plus;
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:convert/convert.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
