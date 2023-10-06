@@ -120,7 +120,7 @@ class BluetoothCharacteristic {
     var result = await FlutterBluePlus.instance._channel
         .invokeMethod('writeCharacteristic', request.toJson());
 
-    if (writeType == BmWriteType.withResponse) {
+    if (writeType == BmWriteType.withoutResponse) {
       return result;
     }
 
