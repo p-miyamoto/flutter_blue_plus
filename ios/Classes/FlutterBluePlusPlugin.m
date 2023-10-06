@@ -145,15 +145,15 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     @try {
       CBPeripheral *peripheral = [_scannedPeripherals objectForKey:remoteId];
       if(peripheral == nil) {
-        //TODO: FlutterErrorではなく、NSExceptionを返す
-        //@throw [FlutterError errorWithCode:@"connect" message:@"Peripheral not found" details:nil];
+        //FlutterErrorではなく、NSExceptionを返す
         [NSException raise:@"connect" format:@"Peripheral not found"];
       }
       // TODO: Implement Connect options (#36)
       [_centralManager connectPeripheral:peripheral options:nil];
       result(@(true));
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"disconnect" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -163,7 +163,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [_centralManager cancelPeripheralConnection:peripheral];
       result(@(true));
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"deviceState" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -172,7 +173,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       result([self toDeviceStateProto:peripheral state:peripheral.state]);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"discoverServices" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -185,7 +187,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral discoverServices:nil];
       result(@(true));
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"services" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -194,7 +197,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
       result([self toServicesResultProto:peripheral]);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"readCharacteristic" isEqualToString:call.method]) {
     // See BmReadCharacteristicRequest
@@ -216,7 +220,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral readValueForCharacteristic:characteristic];
       result(nil);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"readDescriptor" isEqualToString:call.method]) {
     // See BmReadDescriptorRequest
@@ -239,7 +244,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral readValueForDescriptor:descriptor];
       result(nil);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"writeCharacteristic" isEqualToString:call.method]) {
     // See BmWriteCharacteristicRequest
@@ -263,7 +269,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral writeValue:[self convertHexToData:value] forCharacteristic:characteristic type:type];
       result(nil);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"writeDescriptor" isEqualToString:call.method]) {
     // See BmWriteDescriptorRequest
@@ -285,7 +292,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral writeValue:[self convertHexToData:value] forDescriptor:descriptor];
       result(nil);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"setNotification" isEqualToString:call.method]) {
     // See BmSetNotificationRequest
@@ -304,7 +312,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral setNotifyValue:[enable boolValue] forCharacteristic:characteristic];
       result(@(true));
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"mtu" isEqualToString:call.method]) {
     // remoteId is passed raw, not in a NSDictionary
@@ -314,7 +323,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       uint32_t mtu = [self getMtu:peripheral];
       result([self toMtuSizeResponseProto:peripheral mtu:mtu]);
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else if([@"requestMtu" isEqualToString:call.method]) {
     result([FlutterError errorWithCode:@"requestMtu" message:@"iOS does not allow mtu requests to the peripheral" details:NULL]);
@@ -326,7 +336,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       [peripheral readRSSI];
       result(@(true));
     } @catch(NSException *e) {
-      result(e);
+      //NSExceptionをFlutterErrorに変換して返す
+      result([FlutterError errorWithCode:[e name] message:[e reason] details:NULL]);
     }
   } else {
     result(FlutterMethodNotImplemented);
@@ -374,9 +385,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     }
   }
   if(peripheral == nil) {
-    @throw [FlutterError errorWithCode:@"findPeripheral"
-                               message:@"Peripheral not found"
-                               details:nil];
+    [NSException raise:@"findPeripheral" format:@"Peripheral not found"];
   }
   return peripheral;
 }
@@ -384,23 +393,17 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (CBCharacteristic*)locateCharacteristic:(NSString*)characteristicId peripheral:(CBPeripheral*)peripheral serviceId:(NSString*)serviceId secondaryServiceId:(NSString*)secondaryServiceId {
   CBService *primaryService = [self getServiceFromArray:serviceId array:[peripheral services]];
   if(primaryService == nil || [primaryService isPrimary] == false) {
-    @throw [FlutterError errorWithCode:@"locateCharacteristic"
-                               message:@"service could not be located on the device"
-                               details:nil];
+    [NSException raise:@"locateCharacteristic" format:@"service could not be located on the device"];
   }
   CBService *secondaryService;
   if(secondaryServiceId.length) {
     secondaryService = [self getServiceFromArray:secondaryServiceId array:[primaryService includedServices]];
-    @throw [FlutterError errorWithCode:@"locateCharacteristic"
-                               message:@"secondary service could not be located on the device"
-                               details:secondaryServiceId];
+    [NSException raise:@"locateCharacteristic" format:@"secondary service could not be located on the device -> %@", secondaryServiceId];
   }
   CBService *service = (secondaryService != nil) ? secondaryService : primaryService;
   CBCharacteristic *characteristic = [self getCharacteristicFromArray:characteristicId array:[service characteristics]];
   if(characteristic == nil) {
-    @throw [FlutterError errorWithCode:@"locateCharacteristic"
-                               message:@"characteristic could not be located on the device"
-                               details:nil];
+    [NSException raise:@"locateCharacteristic" format:@"characteristic could not be located on the device"];
   }
   return characteristic;
 }
@@ -408,9 +411,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 - (CBDescriptor*)locateDescriptor:(NSString*)descriptorId characteristic:(CBCharacteristic*)characteristic {
   CBDescriptor *descriptor = [self getDescriptorFromArray:descriptorId array:[characteristic descriptors]];
   if(descriptor == nil) {
-    @throw [FlutterError errorWithCode:@"locateDescriptor"
-                               message:@"descriptor could not be located on the device"
-                               details:nil];
+    [NSException raise:@"locateDescriptor" format:@"descriptor could not be located on the device"];
   }
   return descriptor;
 }
