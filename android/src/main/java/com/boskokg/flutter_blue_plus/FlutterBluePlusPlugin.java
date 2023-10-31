@@ -1536,10 +1536,10 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       
       // connectable
       if(Build.VERSION.SDK_INT >= 26) {
-          advertisementData.put("connectable", result.isConnectable() ? 1 : 0);
+          advertisementData.put("connectable", result.isConnectable());
       } else if(scanRecord != null) {
           int flags = scanRecord.getAdvertiseFlags();
-          advertisementData.put("connectable", (flags & 0x2) > 0 ? 1 : 0);
+          advertisementData.put("connectable", (flags & 0x2) > 0);
       }
 
       if(scanRecord != null) {
@@ -1633,7 +1633,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       HashMap<String, Object> map = new HashMap<>();
       map.put("remote_id", device.getAddress());
       map.put("uuid", service.getUuid().toString());
-      map.put("is_primary", service.getType() == BluetoothGattService.SERVICE_TYPE_PRIMARY ? 1 : 0);
+      map.put("is_primary", service.getType() == BluetoothGattService.SERVICE_TYPE_PRIMARY);
       map.put("characteristics", characteristics);
       map.put("included_services", includedServices);
       return map;
