@@ -97,6 +97,7 @@ class BluetoothDevice {
 
   /// Returns a list of Bluetooth GATT services offered by the remote device
   /// This function requires that discoverServices has been completed for this device
+  ///TODO: Androidでは使用不可！
   Stream<List<BluetoothService>> get services async* {
     yield await FlutterBluePlus.instance._channel
         .invokeMethod('services', id.toString())
@@ -129,7 +130,7 @@ class BluetoothDevice {
         .map((buffer) => BmConnectionStatusResponse.fromJson(buffer))
         .where((p) => p.remoteId == id.toString())
         .map((p) => DeviceConnectionStatus(
-            state: bmToBluetoothDeviceStatus(p.state), status: p.state.index));
+            state: bmToBluetoothDeviceState(p.state), status: p.status));
   }
 
   /// The MTU size in bytes
@@ -237,28 +238,8 @@ BluetoothDeviceState bmToBluetoothDeviceState(BmConnectionStateEnum value) {
   }
 }
 
-enum BluetoothDeviceStatus {
-  disconnected,
-  connecting,
-  connected,
-  disconnecting
-}
-
-BluetoothDeviceStatus bmToBluetoothDeviceStatus(BmConnectionStatusEnum value) {
-  switch (value) {
-    case BmConnectionStatusEnum.disconnected:
-      return BluetoothDeviceStatus.disconnected;
-    case BmConnectionStatusEnum.connecting:
-      return BluetoothDeviceStatus.connecting;
-    case BmConnectionStatusEnum.connected:
-      return BluetoothDeviceStatus.connected;
-    case BmConnectionStatusEnum.disconnecting:
-      return BluetoothDeviceStatus.disconnecting;
-  }
-}
-
 class DeviceConnectionStatus {
-  BluetoothDeviceStatus state;
+  BluetoothDeviceState state;
   int status;
   DeviceConnectionStatus({required this.state, required this.status});
 }

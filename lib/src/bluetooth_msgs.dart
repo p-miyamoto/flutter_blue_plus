@@ -670,23 +670,19 @@ class BmConnectionStateResponse {
   }
 }
 
-enum BmConnectionStatusEnum {
-  disconnected,
-  connecting,
-  connected,
-  disconnecting,
-}
-
 class BmConnectionStatusResponse {
   final String remoteId;
-  final BmConnectionStatusEnum state;
+  final BmConnectionStateEnum state;
+  final int status;
 
-  BmConnectionStatusResponse({required this.remoteId, required this.state});
+  BmConnectionStatusResponse(
+      {required this.remoteId, required this.state, required this.status});
 
   Map<dynamic, dynamic> toJson() {
     final Map<dynamic, dynamic> data = {};
     data['remote_id'] = remoteId;
     data['state'] = state.index;
+    data['status'] = status;
     _printDbg("\nBmConnectionStatusResponse $data");
     return data;
   }
@@ -695,7 +691,8 @@ class BmConnectionStatusResponse {
     _printDbg("\nBmConnectionStatusResponse $json");
     return BmConnectionStatusResponse(
       remoteId: json['remote_id'],
-      state: BmConnectionStatusEnum.values[json['state'] as int],
+      state: BmConnectionStateEnum.values[json['state'] as int],
+      status: json['status'],
     );
   }
 }
