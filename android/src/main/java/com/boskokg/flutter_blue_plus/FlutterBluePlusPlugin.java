@@ -1259,8 +1259,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       request.put("service_uuid", pair.primary);
       request.put("secondary_service_uuid", pair.secondary);
       request.put("characteristic_uuid", characteristic.getUuid().toString());
-      //TODO: write_typeが不足している！
-      //request.put("write_type", bytesToHex(characteristic.getValue()));
+      request.put("write_type", characteristic.getWriteType() == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT ? 0 : 1);
       request.put("value", bytesToHex(characteristic.getValue()));
       // see: BmOnCharacteristicWritten
       HashMap<String, Object> response = new HashMap<>();
