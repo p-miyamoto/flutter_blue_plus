@@ -588,7 +588,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           }
 
           // check mtu
-          int mtu = mMtu.get(remoteId);
+          Integer mtu = mMtu.get(remoteId);
           if (mtu != null && (mtu-3) < hexToBytes(value).length) {
               String s = "data longer than mtu allows. dataLength: " +
                   hexToBytes(value).length + "> max: " + (mtu-3);
@@ -647,7 +647,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           BluetoothGattDescriptor descriptor = locateDescriptor(characteristic, descriptorUuid);
 
           // check mtu
-          int mtu = mMtu.get(remoteId);
+          Integer mtu = mMtu.get(remoteId);
           if (mtu != null && (mtu-3) < hexToBytes(value).length) {
               String s = "data longer than mtu allows. dataLength: " +
                   hexToBytes(value).length + "> max: " + (mtu-3);
