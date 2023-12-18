@@ -807,6 +807,29 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           break;
         }
 
+        case "clearGattCache":
+        {
+            String remoteId = (String) call.arguments;
+
+            // check connection
+            BluetoothGatt gatt = mConnectedDevices.get(remoteId);
+            if(gatt == null) {
+                result.error("clearGattCache", "device is disconnected", null);
+                break;
+            }
+
+            final Method refreshMethod = gatt.getClass().getMethod("refresh");
+            if (refreshMethod == null) {
+                result.error("clearGattCache", "unsupported on this android version", null);
+                break;
+            }
+
+            refreshMethod.invoke(gatt);
+
+            result.success(true);
+            break;
+        }
+
         default:
         {
           result.notImplemented();

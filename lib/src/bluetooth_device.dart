@@ -133,6 +133,24 @@ class BluetoothDevice {
             state: bmToBluetoothDeviceState(p.state), status: p.status));
   }
 
+  /// Refresh ble services & characteristics (Android Only)
+  Future<void> clearGattCache() async {
+    // check android
+    if (Platform.isAndroid == false) {
+      return Future.error(Exception('clearGattCache is android only.'));
+    }
+    // check connected
+    final s = await state.first;
+    if (s != BluetoothDeviceState.connected) {
+      return Future.error(Exception(
+          'Cannot clearGattCache while device is not connected. State == $s'));
+    }
+    final remoteId = id.toString();
+    // invoke
+    await FlutterBluePlus.instance._channel
+        .invokeMethod('clearGattCache', remoteId);
+  }
+
   /// The MTU size in bytes
   Stream<int> get mtu async* {
     yield await FlutterBluePlus.instance._channel
