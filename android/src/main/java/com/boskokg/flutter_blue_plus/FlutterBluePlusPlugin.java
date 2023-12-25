@@ -87,6 +87,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
   static final private UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
   private final Map<String, BluetoothGatt> mConnectedDevices = new HashMap<>();
+  private final Map<String, BluetoothGatt> mCurrentlyConnectingDevices = new ConcurrentHashMap<>();
   private final Map<String, Integer> mConnectionState = new HashMap<>();
   private final Map<String, Integer> mMtu = new HashMap<>();
   private LogLevel logLevel = LogLevel.DEBUG;
@@ -406,9 +407,17 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
               String remoteId =  (String)  args.get("remote_id");
               boolean autoConnect = (boolean)  args.get("android_auto_connect");
 
+              // already connecting?
+              if (mCurrentlyConnectingDevices.get(remoteId) != null) {
+                  log(LogLevel.DEBUG, "already connecting");
+                  result.success(null);  // still work to do
+                  return;
+              }
+
               // already connected?
-              if (connectionStateOfThisApp(remoteId) == BluetoothProfile.STATE_CONNECTED) {
-                  result.success(null);// no work to do
+              if (mConnectedDevices.get(remoteId) != null) {
+                  log(LogLevel.DEBUG, "already connected");
+                  result.success(null);  // no work to do
                   return;
               }
 
@@ -421,7 +430,14 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                   gatt = device.connectGatt(context, autoConnect, mGattCallback);
               }
 
-              mConnectedDevices.put(remoteId, gatt);
+              // error check
+              if (gatt == null) {
+                  result.error("connect", String.format("device.connectGatt returned null"), null);
+                  return;
+              }
+
+              // add to currently connecting peripherals
+              mCurrentlyConnectingDevices.put(remoteId, gatt);
 
               result.success(null);
           });
@@ -433,17 +449,41 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           String remoteId = (String) call.arguments;
 
           // already disconnected?
-          BluetoothGatt gatt = mConnectedDevices.get(remoteId);
+          BluetoothGatt gatt = null;
           if (gatt == null) {
-              result.success(null);// no work to do
+              gatt = mCurrentlyConnectingDevices.get(remoteId);
+              if (gatt != null) {
+                  log(LogLevel.DEBUG, "disconnect: cancelling connection in progress");
+              }
+          }
+          if (gatt == null) {
+              gatt = mConnectedDevices.get(remoteId);;
+          }
+          if (gatt == null) {
+              log(LogLevel.DEBUG, "already disconnected");
+              result.success(null);  // no work to do
               return;
           }
-      
+
+          // disconnect
           gatt.disconnect();
-          //接続を空で走らせるとstateChangeが呼ばれず、gattが閉じられない？
-          //ここで閉じる。
-          //TODO: 何らかの条件があったほうがいいかもしれない
-          gatt.close();
+
+          // was connecting?
+          if (mCurrentlyConnectingDevices.get(remoteId) != null) {
+
+            // remove
+            mCurrentlyConnectingDevices.remove(remoteId);
+
+            // cleanup
+            gatt.close();
+
+            // see: BmConnectionStateResponse
+            HashMap<String, Object> response = new HashMap<>();
+            response.put("remote_id", remoteId);
+            response.put("state", bmConnectionStateEnum(BluetoothProfile.STATE_DISCONNECTED));
+
+            invokeMethodUIThread("DeviceState", response);
+          }
 
           result.success(null);
           break;
@@ -1020,6 +1060,11 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                 case BluetoothAdapter.STATE_TURNING_ON:   convertedState = 3;           break;
                 default:                                  convertedState = 0;           break;
             }
+            // disconnect all devices
+            if (convertedState == BluetoothAdapter.STATE_TURNING_OFF || 
+                convertedState == BluetoothAdapter.STATE_OFF) {
+                disconnectAllDevices("adapterTurnOff");
+            }
             // see: BmBluetoothAdapterState
             HashMap<String, Object> map = new HashMap<>();
             map.put("state", convertedState);
@@ -1179,10 +1224,17 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     @Override
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
       log(LogLevel.DEBUG, "[FBP-Android] onConnectionStateChange: status: " + status + " newState: " + newState);
+      
+      // android never uses this callback with enums values of CONNECTING or DISCONNECTING,
+      // (theyre only used for gatt.getConnectionState()), but just to be
+      // future proof, explicitly ignore anything else. CoreBluetooth is the same way.
+      if(newState != BluetoothProfile.STATE_CONNECTED &&
+          newState != BluetoothProfile.STATE_DISCONNECTED) {
+          return;
+      }
+
       String remoteId = gatt.getDevice().getAddress();
 
-      // remember the connection state of this app
-      mConnectionState.put(remoteId, newState);
       // see: BmConnectionStateResponse
       //statusを渡す
       HashMap<String, Object> responseStatus = new HashMap<>();
@@ -1191,16 +1243,34 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       responseStatus.put("status", status);
       //デバイス接続ステータス取得用
       invokeMethodUIThread("DeviceStatus", responseStatus);
-      // disconnection?
-        if(newState == BluetoothProfile.STATE_DISCONNECTED) {
 
-          // mConnectedDevices only keeps a value if our app is connected
+       // connected?
+      if(newState == BluetoothProfile.STATE_CONNECTED) {
+          // add to connected devices
+          mConnectedDevices.put(remoteId, gatt);
+
+          // remove from currently connecting devices
+          mCurrentlyConnectingDevices.remove(remoteId);
+
+          // default minimum mtu
+          mMtu.put(remoteId, 23);
+      }
+
+      // disconnected?
+      if(newState == BluetoothProfile.STATE_DISCONNECTED) {
+
+          // remove from connected devices
           mConnectedDevices.remove(remoteId);
 
-          // it is important to close, otherwise we could run out
-          // of bluetooth resources preventing new connections
+          // remove from currently connecting devices
+          mCurrentlyConnectingDevices.remove(remoteId);
+
+          //TODO: 自動接続を利用する場合はgatt.closeは呼ばないほうがいい
+          // it is important to close after disconnection, otherwise we will 
+          // quickly run out of bluetooth resources, preventing new connections
           gatt.close();
-        }
+      }
+
       // see: BmConnectionStateResponse
       HashMap<String, Object> response = new HashMap<>();
       response.put("remote_id", remoteId);
@@ -1744,6 +1814,43 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       invokeMethodUIThread("Logger", response);
     }
   }
+
+   private void disconnectAllDevices(String func)
+    {
+        log(LogLevel.DEBUG, "disconnectAllDevices("+func+")");
+
+        // request disconnections
+        for (BluetoothGatt gatt : mConnectedDevices.values()) {
+
+            if (func == "adapterTurnOff") {
+
+                // Note: 
+                //  - calling `disconnect` and `close` after the adapter
+                //    is turned off is not necessary. It is implied.
+                //    Calling them leads to a `DeadObjectException`.
+                //  - But, we must make sure the disconnect callback is called.
+                //    It's surprising but android does not invoke this callback itself.
+                mGattCallback.onConnectionStateChange(gatt, 0, BluetoothProfile.STATE_DISCONNECTED);
+
+            } else {
+
+                String remoteId = gatt.getDevice().getAddress();
+                
+                // disconnect
+                log(LogLevel.DEBUG, "calling disconnect: " + remoteId);
+                gatt.disconnect();
+
+                // it is important to close after disconnection, otherwise we will 
+                // quickly run out of bluetooth resources, preventing new connections
+                log(LogLevel.DEBUG, "calling close: " + remoteId);
+                gatt.close();
+            }
+        }
+
+        mConnectedDevices.clear();
+        mCurrentlyConnectingDevices.clear();
+        mMtu.clear();
+    }
 
   private void invokeMethodUIThread(final String method, HashMap<String, Object> data)
   {
