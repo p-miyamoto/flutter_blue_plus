@@ -440,6 +440,10 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           }
       
           gatt.disconnect();
+          //接続を空で走らせるとstateChangeが呼ばれず、gattが閉じられない？
+          //ここで閉じる。
+          //TODO: 何らかの条件があったほうがいいかもしれない
+          gatt.close();
 
           result.success(null);
           break;
