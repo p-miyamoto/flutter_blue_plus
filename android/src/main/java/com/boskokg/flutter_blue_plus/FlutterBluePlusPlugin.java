@@ -1226,15 +1226,8 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
       log(LogLevel.DEBUG, "[FBP-Android] onConnectionStateChange: status: " + status + " newState: " + newState);
       
-      // android never uses this callback with enums values of CONNECTING or DISCONNECTING,
-      // (theyre only used for gatt.getConnectionState()), but just to be
-      // future proof, explicitly ignore anything else. CoreBluetooth is the same way.
-      if(newState != BluetoothProfile.STATE_CONNECTED &&
-          newState != BluetoothProfile.STATE_DISCONNECTED) {
-          return;
-      }
-
       String remoteId = gatt.getDevice().getAddress();
+      mConnectionState.put(remoteId, newState);
 
       // see: BmConnectionStateResponse
       //statusを渡す
@@ -1244,6 +1237,15 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       responseStatus.put("status", status);
       //デバイス接続ステータス取得用
       invokeMethodUIThread("DeviceStatus", responseStatus);
+
+      // android never uses this callback with enums values of CONNECTING or DISCONNECTING,
+      // (theyre only used for gatt.getConnectionState()), but just to be
+      // future proof, explicitly ignore anything else. CoreBluetooth is the same way.
+      if(newState != BluetoothProfile.STATE_CONNECTED &&
+          newState != BluetoothProfile.STATE_DISCONNECTED) {
+          return;
+      }
+
 
        // connected?
       if(newState == BluetoothProfile.STATE_CONNECTED) {
