@@ -38,6 +38,7 @@ import android.util.SparseArray;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -86,10 +87,10 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   private ActivityPluginBinding activityBinding;
 
   static final private UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
-  private final Map<String, BluetoothGatt> mConnectedDevices = new HashMap<>();
+  private final Map<String, BluetoothGatt> mConnectedDevices = new ConcurrentHashMap<>();
   private final Map<String, BluetoothGatt> mCurrentlyConnectingDevices = new ConcurrentHashMap<>();
-  private final Map<String, Integer> mConnectionState = new HashMap<>();
-  private final Map<String, Integer> mMtu = new HashMap<>();
+  private final Map<String, Integer> mConnectionState = new ConcurrentHashMap<>();
+  private final Map<String, Integer> mMtu = new ConcurrentHashMap<>();
   private LogLevel logLevel = LogLevel.DEBUG;
 
   private interface OperationOnPermission {
