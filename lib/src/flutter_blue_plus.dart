@@ -7,8 +7,6 @@ part of flutter_blue_plus;
 class FlutterBluePlus {
   final MethodChannel _channel =
       const MethodChannel('flutter_blue_plus/methods');
-  final EventChannel _stateChannel =
-      const EventChannel('flutter_blue_plus/state');
   final StreamController<MethodCall> _methodStreamController =
       StreamController.broadcast(); // ignore: close_sinks
   Stream<MethodCall> get _methodStream => _methodStreamController
@@ -82,9 +80,9 @@ class FlutterBluePlus {
         .invokeMethod('state')
         .then((buffer) => BmBluetoothPowerState.fromJson(buffer))
         .then((s) => bmToBluetoothState(s.state));
-
-    yield* _stateChannel
-        .receiveBroadcastStream()
+    yield* FlutterBluePlus.instance._methodStream
+        .where((m) => m.method == "adapterStateChanged")
+        .map((m) => m.arguments)
         .map((buffer) => BmBluetoothPowerState.fromJson(buffer))
         .map((s) => bmToBluetoothState(s.state));
   }

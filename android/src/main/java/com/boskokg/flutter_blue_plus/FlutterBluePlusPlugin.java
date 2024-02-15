@@ -79,7 +79,6 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   private MethodChannel methodChannel;
   private static final String NAMESPACE = "flutter_blue_plus";
 
-  private EventChannel stateChannel;
   private BluetoothManager mBluetoothManager;
   private BluetoothAdapter mBluetoothAdapter;
 
@@ -154,10 +153,11 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       this.context = application;
       methodChannel = new MethodChannel(messenger, NAMESPACE + "/methods");
       methodChannel.setMethodCallHandler(this);
-      stateChannel = new EventChannel(messenger, NAMESPACE + "/state");
-      stateChannel.setStreamHandler(stateHandler);
       mBluetoothManager = (BluetoothManager) application.getSystemService(Context.BLUETOOTH_SERVICE);
       mBluetoothAdapter = mBluetoothManager.getAdapter();
+      
+      IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+      context.registerReceiver(mBluetoothStateReceiver, filter);
     }
   }
 
@@ -173,11 +173,10 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           gatt.close();
         }
       }
+      context.unregisterReceiver(mBluetoothStateReceiver);
       context = null;
       methodChannel.setMethodCallHandler(null);
       methodChannel = null;
-      stateChannel.setStreamHandler(null);
-      stateChannel = null;
       mBluetoothAdapter = null;
       mBluetoothManager = null;
     }
@@ -1040,18 +1039,20 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   // ██████   █████    ██       █████    ██  ██    ██  █████    ██████
   // ██   ██  ██       ██       ██       ██   ██  ██   ██       ██   ██
   // ██   ██  ███████   ██████  ███████  ██    ████    ███████  ██   ██
-
-  private final StreamHandler stateHandler = new StreamHandler() {
-    private EventSink sink;
-
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+    //TODO: 1.9.0時点
+    private final BroadcastReceiver mBluetoothStateReceiver = new BroadcastReceiver() {
       @Override
       public void onReceive(Context context, Intent intent) {
-        final String action = intent.getAction();
+       final String action = intent.getAction();
+            log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver");
+            // no change?
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action) == false) {
+                log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver ACTION_STATE_CHANGED = action == false");
+                return;
+            }
 
-        if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
-          final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,
-                  BluetoothAdapter.ERROR);
+            final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+
             // convert to Protobuf enum
             int convertedState;
             switch (state) {
@@ -1061,32 +1062,22 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                 case BluetoothAdapter.STATE_TURNING_ON:   convertedState = 3;           break;
                 default:                                  convertedState = 0;           break;
             }
+            log(LogLevel.INFO, "[FBP-Android] mBluetoothStateReceiver state = " + convertedState);
+
             // disconnect all devices
-            if (convertedState == BluetoothAdapter.STATE_TURNING_OFF || 
-                convertedState == BluetoothAdapter.STATE_OFF) {
+            if (state == BluetoothAdapter.STATE_TURNING_OFF || 
+                state == BluetoothAdapter.STATE_OFF) {
+                log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver adapterTurnOff");
                 disconnectAllDevices("adapterTurnOff");
             }
             // see: BmBluetoothAdapterState
             HashMap<String, Object> map = new HashMap<>();
             map.put("state", convertedState);
-            sink.success(map);
-        }
+            invokeMethodUIThread("adapterStateChanged", map);
+        //}
       }
     };
 
-    @Override
-    public void onListen(Object o, EventChannel.EventSink eventSink) {
-      sink = eventSink;
-      IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-      context.registerReceiver(mReceiver, filter);
-    }
-
-    @Override
-    public void onCancel(Object o) {
-      sink = null;
-      context.unregisterReceiver(mReceiver);
-    }
-  };
 
   ////////////////////////////////////////////////////////////////
   // ███████  ███████  ████████   ██████  ██   ██
