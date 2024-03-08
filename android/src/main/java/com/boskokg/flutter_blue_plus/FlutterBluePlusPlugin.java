@@ -1146,7 +1146,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
               @Override
               public void onScanResult(int callbackType, ScanResult result)
               {
-                  log(LogLevel.DEBUG, "[FBP-Android] onScanResult");
+                  //log(LogLevel.DEBUG, "[FBP-Android] onScanResult");
 
                   super.onScanResult(callbackType, result);
 
