@@ -164,6 +164,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   private void tearDown() {
     synchronized (tearDownLock) {
       Log.d(TAG, "teardown");
+      /*
       for (BluetoothGatt gatt : mConnectedDevices.values()) {
           if(gatt != null) {
             String remoteId = gatt.getDevice().getAddress();
@@ -172,7 +173,10 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           gatt.disconnect();
           gatt.close();
         }
-      }
+      }*/
+
+      disconnectAllDevices("tearDown");
+
       context.unregisterReceiver(mBluetoothStateReceiver);
       context = null;
       methodChannel.setMethodCallHandler(null);
@@ -849,6 +853,61 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
           result.success(null);
           break;
+        }
+
+        case "removeBond":
+        {
+            String remoteId = (String) call.arguments;
+
+            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(remoteId);
+
+            // already removed?
+            if (device.getBondState() == BluetoothDevice.BOND_NONE) {
+              log(LogLevel.WARNING, "[FBP-Android] already not bonded");
+              result.success(false); // no work to do
+              break;
+            }
+            // already disconnected?
+            BluetoothGatt gatt = null;
+            if (gatt == null) {
+              gatt = mCurrentlyConnectingDevices.get(remoteId);
+              if (gatt != null) {
+                  log(LogLevel.DEBUG, "disconnect: cancelling connection in progress");
+              }
+            }
+            if (gatt == null) {
+              gatt = mConnectedDevices.get(remoteId);;
+            }
+            if (gatt != null) {
+                // disconnect
+                gatt.disconnect();
+
+                // was connecting?
+                if (mCurrentlyConnectingDevices.get(remoteId) != null) {
+                    // remove
+                    mCurrentlyConnectingDevices.remove(remoteId);
+
+                    // cleanup
+                    gatt.close();
+                }
+            }
+
+          
+
+            try {
+                Method removeBondMethod = device.getClass().getMethod("removeBond");
+                boolean rv = (boolean) removeBondMethod.invoke(device);
+                if(rv == false) {
+                    result.error("removeBond", "device.removeBond() returned false", null);
+                    break;
+                }
+            } catch (Exception e) {
+                result.error("removeBond", "device.removeBond() returned exception", e.toString());
+                break;
+            }
+            
+            result.success(true);
+            break;
         }
 
         default:

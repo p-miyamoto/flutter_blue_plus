@@ -121,6 +121,17 @@ class BluetoothDevice {
         .map((p) => bmToBluetoothDeviceState(p.state));
   }
 
+  ///ペアリング削除(android only)
+  ///
+  Future<bool> removeBond() async {
+    var changed = await FlutterBluePlus.instance._channel
+        .invokeMethod('removeBond', id.toString());
+    if (changed is bool) {
+      return changed;
+    }
+    return false;
+  }
+
   /////デバイス接続ステータス取得用
   /// The current connection state and status of the device.
   Stream<DeviceConnectionStatus> get status async* {
