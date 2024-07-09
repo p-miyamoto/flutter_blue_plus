@@ -781,15 +781,15 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
     @Override
     public void onListen(Object o, EventChannel.EventSink eventSink) {
-      sink = eventSink;
-      IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-      context.registerReceiver(mReceiver, filter);
+//      sink = eventSink;
+//      IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+//      context.registerReceiver(mReceiver, filter);
     }
 
     @Override
     public void onCancel(Object o) {
-      sink = null;
-      context.unregisterReceiver(mReceiver);
+//      sink = null;
+//      context.unregisterReceiver(mReceiver);
     }
   };
 
@@ -874,8 +874,8 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
   @TargetApi(21)
   private void stopScan21() {
-    BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
-    if(scanner != null) scanner.stopScan(getScanCallback21());
+//    BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
+//    if(scanner != null) scanner.stopScan(getScanCallback21());
   }
 
   private BluetoothAdapter.LeScanCallback scanCallback18;
@@ -1052,11 +1052,11 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   };
 
   private void log(LogLevel level, String message) {
-    if(level.ordinal() <= logLevel.ordinal()) {
-      Log.d(TAG, message);
-      //TODO: ログはFlutter側に送信する。
-      invokeMethodUIThread("Logger", message.getBytes());
-    }
+//    if(level.ordinal() <= logLevel.ordinal()) {
+//      Log.d(TAG, message);
+//      //TODO: ログはFlutter側に送信する。
+//      invokeMethodUIThread("Logger", message.getBytes());
+//    }
   }
 
   private void invokeMethodUIThread(final String name, final byte[] byteArray)
@@ -1064,11 +1064,11 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     new Handler(Looper.getMainLooper()).post(() -> {
       synchronized (tearDownLock) {
         //Could already be teared down at this moment
-        if (channel != null) {
-          channel.invokeMethod(name, byteArray);
-        } else {
-          Log.w(TAG, "Tried to call " + name + " on closed channel");
-        }
+//        if (channel != null) {
+//          channel.invokeMethod(name, byteArray);
+//        } else {
+//          Log.w(TAG, "Tried to call " + name + " on closed channel");
+//        }
       }
     });
   }
@@ -1086,7 +1086,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
     BluetoothDeviceCache(BluetoothGatt gatt) {
       this.gatt = gatt;
-      mtu = 20;
+//      mtu = 20;
     }
   }
 }
