@@ -1222,6 +1222,9 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
                   BluetoothDevice device = result.getDevice();
 
+                  System.out.println("下に出てる");
+                  System.out.println(device);
+
                   if (!allowDuplicates && device.getAddress() != null) {
 
                       // duplicate?
