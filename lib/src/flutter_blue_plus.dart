@@ -237,6 +237,14 @@ class FlutterBluePlus {
       }
     }
   }
+
+  Future<bool> startBeaconReceiver() {
+    return _channel.invokeMethod('startBeaconReceiver').then<bool>((d) => d);
+  }
+
+  Future<bool> stopBeaconReceiver() {
+    return _channel.invokeMethod('stopBeaconReceiver').then<bool>((d) => d);
+  }
 }
 
 /// Log levels for FlutterBlue

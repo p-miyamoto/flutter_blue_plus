@@ -57,6 +57,8 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import org.altbeacon.beacon.Beacon;
+
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
@@ -101,6 +103,8 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
   private final ArrayList<String> macDeviceScanned = new ArrayList<>();
   private boolean allowDuplicates = false;
+
+  private BeaconReceiver beaconReceiver;
 
   public FlutterBluePlusPlugin() {}
 
@@ -908,6 +912,19 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
             
             result.success(true);
             break;
+        }
+
+        case "startBeaconReceiver":
+        {
+            beaconReceiver = new BeaconReceiver(activityBinding.getActivity(), context, FlutterBluePlusPlugin::scaningBeacon);
+            boolean isStart = beaconReceiver.startBeaconReceiver();
+            result.success(isStart);
+        }
+
+        case "stopBeaconReceiver":
+        {
+            boolean isStop = beaconReceiver.stopBeaconReceiver();
+            result.success(isStop);
         }
 
         default:
@@ -1990,6 +2007,19 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
           case ScanCallback.SCAN_FAILED_SCANNING_TOO_FREQUENTLY        : return "SCAN_FAILED_SCANNING_TOO_FREQUENTLY";
           default: return "UNKNOWN_SCAN_ERROR (" + value + ")";
       }
+  }
+
+  private static Void scaningBeacon(List<Map<String, String>> result) {
+    for(Map<String, String> beacon: result){
+      System.out.println("-----------------------------------");
+      System.out.println( "calling uuid    : " + beacon.get("uuid"));
+      System.out.println( "calling major   : " + beacon.get("major"));
+      System.out.println( "calling minor   : " + beacon.get("minor"));
+      System.out.println( "calling Distance: " + beacon.get("Distance"));
+      System.out.println( "calling RSSI    : " + beacon.get("RSSI"));
+      System.out.println( "calling TxPower : " + beacon.get("TxPower"));
+      System.out.println( "-----------------------------------");
+    }
   }
 
   enum LogLevel
