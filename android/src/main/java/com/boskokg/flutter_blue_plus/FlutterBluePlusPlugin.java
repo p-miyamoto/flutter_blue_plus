@@ -911,12 +911,14 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
             beaconReceiver = new BeaconReceiver(activityBinding.getActivity(), context, FlutterBluePlusPlugin::scaningBeacon);
             boolean isStart = beaconReceiver.startBeaconReceiver();
             result.success(isStart);
+            break;
         }
 
         case "stopBeaconReceiver":
         {
             boolean isStop = beaconReceiver.stopBeaconReceiver();
             result.success(isStop);
+            break;
         }
 
         default:
