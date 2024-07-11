@@ -114,35 +114,35 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-    Log.d(TAG, "onDetachedFromEngine");
-    pluginBinding = null;
-    tearDown();
+//    Log.d(TAG, "onDetachedFromEngine");
+//    pluginBinding = null;
+//    tearDown();
   }
 
   @Override
   public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
-    Log.d(TAG, "onAttachedToActivity");
-    activityBinding = binding;
-    activityBinding.addRequestPermissionsResultListener(this);
+//    Log.d(TAG, "onAttachedToActivity");
+//    activityBinding = binding;
+//    activityBinding.addRequestPermissionsResultListener(this);
   }
 
   @Override
   public void onDetachedFromActivityForConfigChanges() {
-    Log.d(TAG, "onDetachedFromActivityForConfigChanges");
-    onDetachedFromActivity();
+//    Log.d(TAG, "onDetachedFromActivityForConfigChanges");
+//    onDetachedFromActivity();
   }
 
   @Override
   public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
-    Log.d(TAG, "onReattachedToActivityForConfigChanges");
-    onAttachedToActivity(binding);
+//    Log.d(TAG, "onReattachedToActivityForConfigChanges");
+//    onAttachedToActivity(binding);
   }
 
   @Override
   public void onDetachedFromActivity() {
-    Log.d(TAG, "onDetachedFromActivity");
-    activityBinding.removeRequestPermissionsResultListener(this);
-    activityBinding = null;
+//    Log.d(TAG, "onDetachedFromActivity");
+//    activityBinding.removeRequestPermissionsResultListener(this);
+//    activityBinding = null;
   }
 
   private void setup(
@@ -153,11 +153,11 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
       this.context = application;
       methodChannel = new MethodChannel(messenger, NAMESPACE + "/methods");
       methodChannel.setMethodCallHandler(this);
-      mBluetoothManager = (BluetoothManager) application.getSystemService(Context.BLUETOOTH_SERVICE);
-      mBluetoothAdapter = mBluetoothManager.getAdapter();
-      
-      IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-      context.registerReceiver(mBluetoothStateReceiver, filter);
+//      mBluetoothManager = (BluetoothManager) application.getSystemService(Context.BLUETOOTH_SERVICE);
+//      mBluetoothAdapter = mBluetoothManager.getAdapter();
+//
+//      IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+//      context.registerReceiver(mBluetoothStateReceiver, filter);
     }
   }
 
@@ -202,728 +202,728 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-    try {
-      if(mBluetoothAdapter == null && !"isAvailable".equals(call.method)) {
-        result.error("bluetooth_unavailable", "the device does not have bluetooth", null);
-        return;
-      }
-
-      switch (call.method) {
-        case "setLogLevel":
-        {
-          int logLevelIndex = (int)call.arguments;
-          logLevel = LogLevel.values()[logLevelIndex];
-          result.success(null);
-          break;
-        }
-
-        case "state":
-        {
-            // get adapterState, if we can
-            int adapterState = -1;
-            try {
-                adapterState = mBluetoothAdapter.getState();
-            } catch (Exception e) {}
-
-            int convertedState;
-            switch (adapterState) {
-                case BluetoothAdapter.STATE_OFF:          convertedState = 6;           break;
-                case BluetoothAdapter.STATE_ON:           convertedState = 4;           break;
-                case BluetoothAdapter.STATE_TURNING_OFF:  convertedState = 5;           break;
-                case BluetoothAdapter.STATE_TURNING_ON:   convertedState = 3;           break;
-                default:                                  convertedState = 0;           break;
-            }
-
-            // see: BmBluetoothAdapterState
-            HashMap<String, Object> map = new HashMap<>();
-            map.put("state", convertedState);
-
-            result.success(map);
-            break;
-        }
-
-        case "isAvailable":
-        {
-          result.success(mBluetoothAdapter != null);
-          break;
-        }
-
-        case "isOn":
-        {
-          result.success(mBluetoothAdapter.isEnabled());
-          break;
-        }
-
-        case "turnOn":
-        {
-          if (!mBluetoothAdapter.isEnabled()) {
-            result.success(mBluetoothAdapter.enable());
-          }
-          break;
-        }
-
-        case "turnOff":
-        {
-          if (mBluetoothAdapter.isEnabled()) {
-            result.success(mBluetoothAdapter.disable());
-          }
-          break;
-        }
-
-        case "startScan":
-        {
-          ArrayList<String> permissions = new ArrayList<>();
-
-          // see: BmScanSettings
-          HashMap<String, Object> data = call.arguments();
-          List<ScanFilter> filters = fetchFilters(data);
-          allowDuplicates =          (boolean) data.get("allow_duplicates");
-          int scanMode =                 (int) data.get("android_scan_mode");
-
-          // Android 12+
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-              permissions.add(Manifest.permission.BLUETOOTH_SCAN);
-              permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
-              //不要？必要であれば足す
-              //if (usesFineLocation) {
-              //    permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-              //}
-          }
-
-          // Android 11 or lower
-          if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-              permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-          }
-
-          ensurePermissions(permissions, (granted, perm) -> {
-              if (granted == false) {
-                  result.error("startScan", String.format("FlutterBluePlus requires %s permission", perm), null);
-                  return;
-              }
-
-              macDeviceScanned.clear();
-
-              BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
-              if(scanner == null) {
-                  result.error("startScan", String.format("getBluetoothLeScanner() is null. Is the Adapter on?"), null);
-                  return;
-              }
-
-              ScanSettings settings;
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                  settings = new ScanSettings.Builder()
-                      .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
-                      .setLegacy(false)
-                      .setScanMode(scanMode)
-                      .build();
-              } else {
-                  settings = new ScanSettings.Builder()
-                      .setScanMode(scanMode).build();
-              }
-
-              scanner.startScan(filters, settings, getScanCallback());
-
-              result.success(null);
-          });
-          break;
-        }
-
-        case "stopScan":
-        {
-          BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
-
-          if(scanner != null) {
-              scanner.stopScan(getScanCallback());
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "getConnectedDevices":
-        {
-          ArrayList<String> permissions = new ArrayList<>();
-
-          // Android 12+
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-              permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
-          }
-
-          ensurePermissions(permissions, (granted, perm) -> {
-
-              if (!granted) {
-                  result.error("getConnectedDevices",
-                      String.format("FlutterBluePlus requires %s permission", perm), null);
-                  return;
-              }
-
-              // this includes devices connected by other apps
-              List<BluetoothDevice> devices = mBluetoothManager.getConnectedDevices(BluetoothProfile.GATT);
-
-              List<HashMap<String, Object>> devList = new ArrayList<HashMap<String, Object>>();
-              for (BluetoothDevice d : devices) {
-                  devList.add(bmBluetoothDevice(d));
-              }
-
-              HashMap<String, Object> response = new HashMap<>();
-              response.put("devices", devList);
-
-              result.success(response);
-          });
-          break;
-        }
-
-        case "getBondedDevices":
-        {
-          final Set<BluetoothDevice> bondedDevices = mBluetoothAdapter.getBondedDevices();
-
-          List<HashMap<String,Object>> devList = new ArrayList<HashMap<String,Object>>();
-          for (BluetoothDevice d : bondedDevices) {
-              devList.add(bmBluetoothDevice(d));
-          }
-
-          HashMap<String, Object> response = new HashMap<String, Object>();
-          response.put("devices", devList);
-
-          result.success(response);
-          break;
-        }
-
-        case "connect":
-        {
-          ArrayList<String> permissions = new ArrayList<>();
-
-          // Android 12+
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-              permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
-          }
-
-          ensurePermissions(permissions, (granted, perm) -> {
-
-              if (!granted) {
-                  result.error("connect",
-                      String.format("FlutterBluePlus requires %s for new connection", perm), null);
-                  return;
-              }
-
-              // see: BmConnectRequest
-              HashMap<String, Object> args = call.arguments();
-              String remoteId =  (String)  args.get("remote_id");
-              boolean autoConnect = (boolean)  args.get("android_auto_connect");
-
-              // already connecting?
-              if (mCurrentlyConnectingDevices.get(remoteId) != null) {
-                  log(LogLevel.DEBUG, "already connecting");
-                  result.success(null);  // still work to do
-                  return;
-              }
-
-              // already connected?
-              if (mConnectedDevices.get(remoteId) != null) {
-                  log(LogLevel.DEBUG, "already connected");
-                  result.success(null);  // no work to do
-                  return;
-              }
-
-              // connect with new gatt
-              BluetoothGatt gatt;
-              BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(remoteId);
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                  gatt = device.connectGatt(context, autoConnect, mGattCallback, BluetoothDevice.TRANSPORT_LE);
-              } else {
-                  gatt = device.connectGatt(context, autoConnect, mGattCallback);
-              }
-
-              // error check
-              if (gatt == null) {
-                  result.error("connect", String.format("device.connectGatt returned null"), null);
-                  return;
-              }
-
-              // add to currently connecting peripherals
-              mCurrentlyConnectingDevices.put(remoteId, gatt);
-
-              result.success(null);
-          });
-          break;
-        }
-
-        case "disconnect":
-        {
-          String remoteId = (String) call.arguments;
-
-          // already disconnected?
-          BluetoothGatt gatt = null;
-          if (gatt == null) {
-              gatt = mCurrentlyConnectingDevices.get(remoteId);
-              if (gatt != null) {
-                  log(LogLevel.DEBUG, "disconnect: cancelling connection in progress");
-              }
-          }
-          if (gatt == null) {
-              gatt = mConnectedDevices.get(remoteId);;
-          }
-          if (gatt == null) {
-              log(LogLevel.DEBUG, "already disconnected");
-              result.success(null);  // no work to do
-              return;
-          }
-
-          // disconnect
-          gatt.disconnect();
-
-          // was connecting?
-          if (mCurrentlyConnectingDevices.get(remoteId) != null) {
-
-            // remove
-            mCurrentlyConnectingDevices.remove(remoteId);
-
-            // cleanup
-            gatt.close();
-
-            // see: BmConnectionStateResponse
-            HashMap<String, Object> response = new HashMap<>();
-            response.put("remote_id", remoteId);
-            response.put("state", bmConnectionStateEnum(BluetoothProfile.STATE_DISCONNECTED));
-
-            invokeMethodUIThread("DeviceState", response);
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "deviceState":
-        {
-          String remoteId = (String) call.arguments;
-
-          // get the connection state of *our app*
-          // We don't care if other apps are connected
-          int cs = connectionStateOfThisApp(remoteId);
-
-          // see: BmConnectionStateResponse
-          HashMap<String, Object> response = new HashMap<>();
-          response.put("state", bmConnectionStateEnum(cs));
-          response.put("remote_id", remoteId);
-
-          result.success(response);
-          break;
-        }
-
-        case "discoverServices":
-        {
-          String remoteId = (String) call.arguments;
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          if(gatt.discoverServices() == false) {
-              result.error("discover_services", "gatt.discoverServices() returned false", null);
-              break;
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "services":
-        {
-          //TODO: androidは未実装！！
-          /*String deviceId = (String)call.arguments;
-          try {
-            BluetoothGatt gatt = locateGatt(deviceId);
-            Protos.DiscoverServicesResult.Builder p = Protos.DiscoverServicesResult.newBuilder();
-            p.setRemoteId(deviceId);
-            for(BluetoothGattService s : gatt.getServices()){
-              p.addServices(ProtoMaker.from(gatt.getDevice(), s, gatt));
-            }
-            result.success(p.build().toByteArray());
-          } catch(Exception e) {
-            result.error("get_services_error", e.getMessage(), e);
-          }*/
-          result.error("get_services_error", "not implements services only android.", null);
-          break;
-        }
-
-        case "readCharacteristic":
-        {
-          // see: BmReadCharacteristicRequest
-          HashMap<String, Object> data = call.arguments();
-          String remoteId =             (String) data.get("remote_id");
-          String serviceUuid =          (String) data.get("service_uuid");
-          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
-          String characteristicUuid =   (String) data.get("characteristic_uuid");
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
-              serviceUuid, secondaryServiceUuid, characteristicUuid);
-
-          if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
-              result.error("read_characteristic_error",
-                  "The READ property is not supported by this BLE characteristic", null);
-              break;
-          }
-
-          if(gatt.readCharacteristic(characteristic) == false) {
-              result.error("read_characteristic_error",
-                  "gatt.readCharacteristic() returned false", null);
-              break;
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "readDescriptor":
-        {
-          // see: BmReadDescriptorRequest
-          HashMap<String, Object> data = call.arguments();
-          String remoteId =             (String) data.get("remote_id");
-          String serviceUuid =          (String) data.get("service_uuid");
-          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
-          String characteristicUuid =   (String) data.get("characteristic_uuid");
-          String descriptorUuid =       (String) data.get("descriptor_uuid");
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
-              serviceUuid, secondaryServiceUuid, characteristicUuid);
-
-          BluetoothGattDescriptor descriptor = locateDescriptor(characteristic, descriptorUuid);
-
-          if(gatt.readDescriptor(descriptor) == false) {
-              result.error("read_descriptor_error", "gatt.readDescriptor() returned false", null);
-              break;
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "writeCharacteristic":
-        {
-          // see: BmWriteCharacteristicRequest
-          HashMap<String, Object> data = call.arguments();
-          String remoteId =             (String) data.get("remote_id");
-          String serviceUuid =          (String) data.get("service_uuid");
-          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
-          String characteristicUuid =   (String) data.get("characteristic_uuid");
-          String value =                (String) data.get("value");
-          int writeTypeInt =               (int) data.get("write_type");
-
-          int writeType = writeTypeInt == 0 ?
-              BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT :
-              BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
-              serviceUuid, secondaryServiceUuid, characteristicUuid);
-
-          // check writeable
-          if(writeType == 1) {
-              if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) == 0) {
-                  result.error("write_characteristic_error",
-                      "The WRITE_NO_RESPONSE property is not supported by this BLE characteristic", null);
-                  break;
-              }
-          } else {
-                if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE) == 0) {
-                  result.error("write_characteristic_error",
-                      "The WRITE property is not supported by this BLE characteristic", null);
-                  break;
-              }
-          }
-
-          // check mtu
-          Integer mtu = mMtu.get(remoteId);
-          if (mtu != null && (mtu-3) < hexToBytes(value).length) {
-              String s = "data longer than mtu allows. dataLength: " +
-                  hexToBytes(value).length + "> max: " + (mtu-3);
-              result.error("write_characteristic_error", s, null);
-              break;
-          }
-
-          // Version 33
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-
-              int rv = gatt.writeCharacteristic(characteristic, hexToBytes(value), writeType);
-
-              if (rv != BluetoothStatusCodes.SUCCESS) {
-                  String s = "gatt.writeCharacteristic() returned " + rv + " : " + bluetoothStatusString(rv);
-                  result.error("write_characteristic_error", s, null);
-                  return;
-              }
-
-          } else {
-              // set value
-              if(!characteristic.setValue(hexToBytes(value))) {
-                  result.error("write_characteristic_error", "characteristic.setValue() returned false", null);
-                  break;
-              }
-
-              // Write type
-              characteristic.setWriteType(writeType);
-
-              // Write Char
-              if(!gatt.writeCharacteristic(characteristic)){
-                  result.error("write_characteristic_error", "gatt.writeCharacteristic() returned false", null);
-                  break;
-              }
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "writeDescriptor":
-        {
-          // see: BmWriteDescriptorRequest
-          HashMap<String, Object> data = call.arguments();
-          String remoteId =             (String) data.get("remote_id");
-          String serviceUuid =          (String) data.get("service_uuid");
-          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
-          String characteristicUuid =   (String) data.get("characteristic_uuid");
-          String descriptorUuid =       (String) data.get("descriptor_uuid");
-          String value =                (String) data.get("value");
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
-              serviceUuid, secondaryServiceUuid, characteristicUuid);
-
-          BluetoothGattDescriptor descriptor = locateDescriptor(characteristic, descriptorUuid);
-
-          // check mtu
-          Integer mtu = mMtu.get(remoteId);
-          if (mtu != null && (mtu-3) < hexToBytes(value).length) {
-              String s = "data longer than mtu allows. dataLength: " +
-                  hexToBytes(value).length + "> max: " + (mtu-3);
-              result.error("write_characteristic_error", s, null);
-              break;
-          }
-
-          // Version 33
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-
-              int rv = gatt.writeDescriptor(descriptor, hexToBytes(value));
-
-              if (rv != BluetoothStatusCodes.SUCCESS) {
-                  String s = "gatt.writeDescriptor() returned " + rv + " : " + bluetoothStatusString(rv);
-                  result.error("write_characteristic_error", s, null);
-                  return;
-              }
-
-          } else {
-
-              // Set descriptor
-              if(!descriptor.setValue(hexToBytes(value))){
-                  result.error("write_descriptor_error", "descriptor.setValue() returned false", null);
-                  break;
-              }
-
-              // Write descriptor
-              if(!gatt.writeDescriptor(descriptor)){
-                  result.error("write_descriptor_error", "gatt.writeDescriptor() returned false", null);
-                  break;
-              }
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "setNotification":
-        {
-          // see: BmSetNotificationRequest
-          HashMap<String, Object> data = call.arguments();
-          String remoteId =             (String) data.get("remote_id");
-          String serviceUuid =          (String) data.get("service_uuid");
-          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
-          String characteristicUuid =   (String) data.get("characteristic_uuid");
-          boolean enable =             (boolean) data.get("enable");
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
-              serviceUuid, secondaryServiceUuid, characteristicUuid);
-
-          // configure local Android device to listen for characteristic changes
-          if(!gatt.setCharacteristicNotification(characteristic, enable)){
-              result.error("set_notification_error",
-                  "gatt.setCharacteristicNotification(" + enable + ") returned false", null);
-              break;
-          }
-
-          BluetoothGattDescriptor cccDescriptor = characteristic.getDescriptor(CCCD_UUID);
-          if(cccDescriptor == null) {
-              // Some ble devices do not actually need their CCCD updated.
-              // thus setCharacteristicNotification() is all that is required to enable notifications.
-              // The arduino "bluno" devices are an example.
-              String chr = characteristic.getUuid().toString();
-              log(LogLevel.WARNING, "[FBP-Android] CCCD descriptor for characteristic not found: " + chr);
-              result.success(null);
-              return;
-          }
-
-          byte[] descriptorValue = null;
-
-          // determine value
-          if(enable) {
-
-              boolean canNotify = (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0;
-              boolean canIndicate = (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_INDICATE) > 0;
-
-              if(!canIndicate && !canNotify) {
-                  result.error("set_notification_error",
-                      "neither NOTIFY nor INDICATE properties are supported by this BLE characteristic", null);
-                  break;
-              }
-
-              // If a characteristic supports both notifications and indications,
-              // we'll use notifications. This matches how CoreBluetooth works on iOS.
-              if(canIndicate) {descriptorValue = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;}
-              if(canNotify)   {descriptorValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;}
-
-          } else {
-              descriptorValue  = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
-          }
-
-          if (!cccDescriptor.setValue(descriptorValue)) {
-              result.error("set_notification_error", "cccDescriptor.setValue() returned false", null);
-              break;
-          }
-
-          // update notifications on remote BLE device
-          if (!gatt.writeDescriptor(cccDescriptor)) {
-              result.error("set_notification_error", "gatt.writeDescriptor() returned false", null);
-              break;
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "mtu":
-        {
-          String remoteId = (String) call.arguments;
-
-          Integer mtu = mMtu.get(remoteId);
-          if(mtu == null) {
-              result.error("mtu", "no instance of BluetoothGatt, have you connected first?", null);
-              break;
-          }
-
-          HashMap<String, Object> response = new HashMap<String, Object>();
-          response.put("remote_id", remoteId);
-          response.put("mtu", mtu);
-
-          result.success(response);
-          break;
-        }
-
-        case "requestMtu":
-        {
-          // see: BmMtuChangeRequest
-          HashMap<String, Object> data = call.arguments();
-          String remoteId = (String) data.get("remote_id");
-          int mtu =            (int) data.get("mtu");
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          if(gatt.requestMtu(mtu) == false) {
-              result.error("request_mtu", "gatt.requestMtu() returned false", null);
-              break;
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "readRssi":
-        {
-          String remoteId = (String) call.arguments;
-
-          BluetoothGatt gatt = locateGatt(remoteId);
-
-          if(gatt.readRemoteRssi() == false) {
-              result.error("read_rssi", "gatt.readRemoteRssi() returned false", null);
-              break;
-          }
-
-          result.success(null);
-          break;
-        }
-
-        case "removeBond":
-        {
-            String remoteId = (String) call.arguments;
-
-            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(remoteId);
-
-            // already removed?
-            if (device.getBondState() == BluetoothDevice.BOND_NONE) {
-              log(LogLevel.WARNING, "[FBP-Android] already not bonded");
-              result.success(false); // no work to do
-              break;
-            }
-            // already disconnected?
-            BluetoothGatt gatt = null;
-            if (gatt == null) {
-              gatt = mCurrentlyConnectingDevices.get(remoteId);
-              if (gatt != null) {
-                  log(LogLevel.DEBUG, "disconnect: cancelling connection in progress");
-              }
-            }
-            if (gatt == null) {
-              gatt = mConnectedDevices.get(remoteId);;
-            }
-            if (gatt != null) {
-                // disconnect
-                gatt.disconnect();
-
-                // was connecting?
-                if (mCurrentlyConnectingDevices.get(remoteId) != null) {
-                    // remove
-                    mCurrentlyConnectingDevices.remove(remoteId);
-
-                    // cleanup
-                    gatt.close();
-                }
-            }
-
-          
-
-            try {
-                Method removeBondMethod = device.getClass().getMethod("removeBond");
-                boolean rv = (boolean) removeBondMethod.invoke(device);
-                if(rv == false) {
-                    result.error("removeBond", "device.removeBond() returned false", null);
-                    break;
-                }
-            } catch (Exception e) {
-                result.error("removeBond", "device.removeBond() returned exception", e.toString());
-                break;
-            }
-            
-            result.success(true);
-            break;
-        }
-
-        default:
-        {
-          result.notImplemented();
-          break;
-        }
-      }
-    } catch (Exception e) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
-        String stackTrace = sw.toString();
-        result.error("androidException", e.toString(), stackTrace);
-        return;
-    }
+//    try {
+//      if(mBluetoothAdapter == null && !"isAvailable".equals(call.method)) {
+//        result.error("bluetooth_unavailable", "the device does not have bluetooth", null);
+//        return;
+//      }
+//
+//      switch (call.method) {
+//        case "setLogLevel":
+//        {
+//          int logLevelIndex = (int)call.arguments;
+//          logLevel = LogLevel.values()[logLevelIndex];
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "state":
+//        {
+//            // get adapterState, if we can
+//            int adapterState = -1;
+//            try {
+//                adapterState = mBluetoothAdapter.getState();
+//            } catch (Exception e) {}
+//
+//            int convertedState;
+//            switch (adapterState) {
+//                case BluetoothAdapter.STATE_OFF:          convertedState = 6;           break;
+//                case BluetoothAdapter.STATE_ON:           convertedState = 4;           break;
+//                case BluetoothAdapter.STATE_TURNING_OFF:  convertedState = 5;           break;
+//                case BluetoothAdapter.STATE_TURNING_ON:   convertedState = 3;           break;
+//                default:                                  convertedState = 0;           break;
+//            }
+//
+//            // see: BmBluetoothAdapterState
+//            HashMap<String, Object> map = new HashMap<>();
+//            map.put("state", convertedState);
+//
+//            result.success(map);
+//            break;
+//        }
+//
+//        case "isAvailable":
+//        {
+//          result.success(mBluetoothAdapter != null);
+//          break;
+//        }
+//
+//        case "isOn":
+//        {
+//          result.success(mBluetoothAdapter.isEnabled());
+//          break;
+//        }
+//
+//        case "turnOn":
+//        {
+//          if (!mBluetoothAdapter.isEnabled()) {
+//            result.success(mBluetoothAdapter.enable());
+//          }
+//          break;
+//        }
+//
+//        case "turnOff":
+//        {
+//          if (mBluetoothAdapter.isEnabled()) {
+//            result.success(mBluetoothAdapter.disable());
+//          }
+//          break;
+//        }
+//
+//        case "startScan":
+//        {
+//          ArrayList<String> permissions = new ArrayList<>();
+//
+//          // see: BmScanSettings
+//          HashMap<String, Object> data = call.arguments();
+//          List<ScanFilter> filters = fetchFilters(data);
+//          allowDuplicates =          (boolean) data.get("allow_duplicates");
+//          int scanMode =                 (int) data.get("android_scan_mode");
+//
+//          // Android 12+
+//          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//              permissions.add(Manifest.permission.BLUETOOTH_SCAN);
+//              permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
+//              //不要？必要であれば足す
+//              //if (usesFineLocation) {
+//              //    permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+//              //}
+//          }
+//
+//          // Android 11 or lower
+//          if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+//              permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+//          }
+//
+//          ensurePermissions(permissions, (granted, perm) -> {
+//              if (granted == false) {
+//                  result.error("startScan", String.format("FlutterBluePlus requires %s permission", perm), null);
+//                  return;
+//              }
+//
+//              macDeviceScanned.clear();
+//
+//              BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
+//              if(scanner == null) {
+//                  result.error("startScan", String.format("getBluetoothLeScanner() is null. Is the Adapter on?"), null);
+//                  return;
+//              }
+//
+//              ScanSettings settings;
+//              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                  settings = new ScanSettings.Builder()
+//                      .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
+//                      .setLegacy(false)
+//                      .setScanMode(scanMode)
+//                      .build();
+//              } else {
+//                  settings = new ScanSettings.Builder()
+//                      .setScanMode(scanMode).build();
+//              }
+//
+//              scanner.startScan(filters, settings, getScanCallback());
+//
+//              result.success(null);
+//          });
+//          break;
+//        }
+//
+//        case "stopScan":
+//        {
+//          BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
+//
+//          if(scanner != null) {
+//              scanner.stopScan(getScanCallback());
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "getConnectedDevices":
+//        {
+//          ArrayList<String> permissions = new ArrayList<>();
+//
+//          // Android 12+
+//          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//              permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
+//          }
+//
+//          ensurePermissions(permissions, (granted, perm) -> {
+//
+//              if (!granted) {
+//                  result.error("getConnectedDevices",
+//                      String.format("FlutterBluePlus requires %s permission", perm), null);
+//                  return;
+//              }
+//
+//              // this includes devices connected by other apps
+//              List<BluetoothDevice> devices = mBluetoothManager.getConnectedDevices(BluetoothProfile.GATT);
+//
+//              List<HashMap<String, Object>> devList = new ArrayList<HashMap<String, Object>>();
+//              for (BluetoothDevice d : devices) {
+//                  devList.add(bmBluetoothDevice(d));
+//              }
+//
+//              HashMap<String, Object> response = new HashMap<>();
+//              response.put("devices", devList);
+//
+//              result.success(response);
+//          });
+//          break;
+//        }
+//
+//        case "getBondedDevices":
+//        {
+//          final Set<BluetoothDevice> bondedDevices = mBluetoothAdapter.getBondedDevices();
+//
+//          List<HashMap<String,Object>> devList = new ArrayList<HashMap<String,Object>>();
+//          for (BluetoothDevice d : bondedDevices) {
+//              devList.add(bmBluetoothDevice(d));
+//          }
+//
+//          HashMap<String, Object> response = new HashMap<String, Object>();
+//          response.put("devices", devList);
+//
+//          result.success(response);
+//          break;
+//        }
+//
+//        case "connect":
+//        {
+//          ArrayList<String> permissions = new ArrayList<>();
+//
+//          // Android 12+
+//          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//              permissions.add(Manifest.permission.BLUETOOTH_CONNECT);
+//          }
+//
+//          ensurePermissions(permissions, (granted, perm) -> {
+//
+//              if (!granted) {
+//                  result.error("connect",
+//                      String.format("FlutterBluePlus requires %s for new connection", perm), null);
+//                  return;
+//              }
+//
+//              // see: BmConnectRequest
+//              HashMap<String, Object> args = call.arguments();
+//              String remoteId =  (String)  args.get("remote_id");
+//              boolean autoConnect = (boolean)  args.get("android_auto_connect");
+//
+//              // already connecting?
+//              if (mCurrentlyConnectingDevices.get(remoteId) != null) {
+//                  log(LogLevel.DEBUG, "already connecting");
+//                  result.success(null);  // still work to do
+//                  return;
+//              }
+//
+//              // already connected?
+//              if (mConnectedDevices.get(remoteId) != null) {
+//                  log(LogLevel.DEBUG, "already connected");
+//                  result.success(null);  // no work to do
+//                  return;
+//              }
+//
+//              // connect with new gatt
+//              BluetoothGatt gatt;
+//              BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(remoteId);
+//              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//                  gatt = device.connectGatt(context, autoConnect, mGattCallback, BluetoothDevice.TRANSPORT_LE);
+//              } else {
+//                  gatt = device.connectGatt(context, autoConnect, mGattCallback);
+//              }
+//
+//              // error check
+//              if (gatt == null) {
+//                  result.error("connect", String.format("device.connectGatt returned null"), null);
+//                  return;
+//              }
+//
+//              // add to currently connecting peripherals
+//              mCurrentlyConnectingDevices.put(remoteId, gatt);
+//
+//              result.success(null);
+//          });
+//          break;
+//        }
+//
+//        case "disconnect":
+//        {
+//          String remoteId = (String) call.arguments;
+//
+//          // already disconnected?
+//          BluetoothGatt gatt = null;
+//          if (gatt == null) {
+//              gatt = mCurrentlyConnectingDevices.get(remoteId);
+//              if (gatt != null) {
+//                  log(LogLevel.DEBUG, "disconnect: cancelling connection in progress");
+//              }
+//          }
+//          if (gatt == null) {
+//              gatt = mConnectedDevices.get(remoteId);;
+//          }
+//          if (gatt == null) {
+//              log(LogLevel.DEBUG, "already disconnected");
+//              result.success(null);  // no work to do
+//              return;
+//          }
+//
+//          // disconnect
+//          gatt.disconnect();
+//
+//          // was connecting?
+//          if (mCurrentlyConnectingDevices.get(remoteId) != null) {
+//
+//            // remove
+//            mCurrentlyConnectingDevices.remove(remoteId);
+//
+//            // cleanup
+//            gatt.close();
+//
+//            // see: BmConnectionStateResponse
+//            HashMap<String, Object> response = new HashMap<>();
+//            response.put("remote_id", remoteId);
+//            response.put("state", bmConnectionStateEnum(BluetoothProfile.STATE_DISCONNECTED));
+//
+//            invokeMethodUIThread("DeviceState", response);
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "deviceState":
+//        {
+//          String remoteId = (String) call.arguments;
+//
+//          // get the connection state of *our app*
+//          // We don't care if other apps are connected
+//          int cs = connectionStateOfThisApp(remoteId);
+//
+//          // see: BmConnectionStateResponse
+//          HashMap<String, Object> response = new HashMap<>();
+//          response.put("state", bmConnectionStateEnum(cs));
+//          response.put("remote_id", remoteId);
+//
+//          result.success(response);
+//          break;
+//        }
+//
+//        case "discoverServices":
+//        {
+//          String remoteId = (String) call.arguments;
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          if(gatt.discoverServices() == false) {
+//              result.error("discover_services", "gatt.discoverServices() returned false", null);
+//              break;
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "services":
+//        {
+//          //TODO: androidは未実装！！
+//          /*String deviceId = (String)call.arguments;
+//          try {
+//            BluetoothGatt gatt = locateGatt(deviceId);
+//            Protos.DiscoverServicesResult.Builder p = Protos.DiscoverServicesResult.newBuilder();
+//            p.setRemoteId(deviceId);
+//            for(BluetoothGattService s : gatt.getServices()){
+//              p.addServices(ProtoMaker.from(gatt.getDevice(), s, gatt));
+//            }
+//            result.success(p.build().toByteArray());
+//          } catch(Exception e) {
+//            result.error("get_services_error", e.getMessage(), e);
+//          }*/
+//          result.error("get_services_error", "not implements services only android.", null);
+//          break;
+//        }
+//
+//        case "readCharacteristic":
+//        {
+//          // see: BmReadCharacteristicRequest
+//          HashMap<String, Object> data = call.arguments();
+//          String remoteId =             (String) data.get("remote_id");
+//          String serviceUuid =          (String) data.get("service_uuid");
+//          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
+//          String characteristicUuid =   (String) data.get("characteristic_uuid");
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
+//              serviceUuid, secondaryServiceUuid, characteristicUuid);
+//
+//          if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_READ) == 0) {
+//              result.error("read_characteristic_error",
+//                  "The READ property is not supported by this BLE characteristic", null);
+//              break;
+//          }
+//
+//          if(gatt.readCharacteristic(characteristic) == false) {
+//              result.error("read_characteristic_error",
+//                  "gatt.readCharacteristic() returned false", null);
+//              break;
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "readDescriptor":
+//        {
+//          // see: BmReadDescriptorRequest
+//          HashMap<String, Object> data = call.arguments();
+//          String remoteId =             (String) data.get("remote_id");
+//          String serviceUuid =          (String) data.get("service_uuid");
+//          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
+//          String characteristicUuid =   (String) data.get("characteristic_uuid");
+//          String descriptorUuid =       (String) data.get("descriptor_uuid");
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
+//              serviceUuid, secondaryServiceUuid, characteristicUuid);
+//
+//          BluetoothGattDescriptor descriptor = locateDescriptor(characteristic, descriptorUuid);
+//
+//          if(gatt.readDescriptor(descriptor) == false) {
+//              result.error("read_descriptor_error", "gatt.readDescriptor() returned false", null);
+//              break;
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "writeCharacteristic":
+//        {
+//          // see: BmWriteCharacteristicRequest
+//          HashMap<String, Object> data = call.arguments();
+//          String remoteId =             (String) data.get("remote_id");
+//          String serviceUuid =          (String) data.get("service_uuid");
+//          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
+//          String characteristicUuid =   (String) data.get("characteristic_uuid");
+//          String value =                (String) data.get("value");
+//          int writeTypeInt =               (int) data.get("write_type");
+//
+//          int writeType = writeTypeInt == 0 ?
+//              BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT :
+//              BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
+//              serviceUuid, secondaryServiceUuid, characteristicUuid);
+//
+//          // check writeable
+//          if(writeType == 1) {
+//              if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) == 0) {
+//                  result.error("write_characteristic_error",
+//                      "The WRITE_NO_RESPONSE property is not supported by this BLE characteristic", null);
+//                  break;
+//              }
+//          } else {
+//                if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE) == 0) {
+//                  result.error("write_characteristic_error",
+//                      "The WRITE property is not supported by this BLE characteristic", null);
+//                  break;
+//              }
+//          }
+//
+//          // check mtu
+//          Integer mtu = mMtu.get(remoteId);
+//          if (mtu != null && (mtu-3) < hexToBytes(value).length) {
+//              String s = "data longer than mtu allows. dataLength: " +
+//                  hexToBytes(value).length + "> max: " + (mtu-3);
+//              result.error("write_characteristic_error", s, null);
+//              break;
+//          }
+//
+//          // Version 33
+//          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//
+//              int rv = gatt.writeCharacteristic(characteristic, hexToBytes(value), writeType);
+//
+//              if (rv != BluetoothStatusCodes.SUCCESS) {
+//                  String s = "gatt.writeCharacteristic() returned " + rv + " : " + bluetoothStatusString(rv);
+//                  result.error("write_characteristic_error", s, null);
+//                  return;
+//              }
+//
+//          } else {
+//              // set value
+//              if(!characteristic.setValue(hexToBytes(value))) {
+//                  result.error("write_characteristic_error", "characteristic.setValue() returned false", null);
+//                  break;
+//              }
+//
+//              // Write type
+//              characteristic.setWriteType(writeType);
+//
+//              // Write Char
+//              if(!gatt.writeCharacteristic(characteristic)){
+//                  result.error("write_characteristic_error", "gatt.writeCharacteristic() returned false", null);
+//                  break;
+//              }
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "writeDescriptor":
+//        {
+//          // see: BmWriteDescriptorRequest
+//          HashMap<String, Object> data = call.arguments();
+//          String remoteId =             (String) data.get("remote_id");
+//          String serviceUuid =          (String) data.get("service_uuid");
+//          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
+//          String characteristicUuid =   (String) data.get("characteristic_uuid");
+//          String descriptorUuid =       (String) data.get("descriptor_uuid");
+//          String value =                (String) data.get("value");
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
+//              serviceUuid, secondaryServiceUuid, characteristicUuid);
+//
+//          BluetoothGattDescriptor descriptor = locateDescriptor(characteristic, descriptorUuid);
+//
+//          // check mtu
+//          Integer mtu = mMtu.get(remoteId);
+//          if (mtu != null && (mtu-3) < hexToBytes(value).length) {
+//              String s = "data longer than mtu allows. dataLength: " +
+//                  hexToBytes(value).length + "> max: " + (mtu-3);
+//              result.error("write_characteristic_error", s, null);
+//              break;
+//          }
+//
+//          // Version 33
+//          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+//
+//              int rv = gatt.writeDescriptor(descriptor, hexToBytes(value));
+//
+//              if (rv != BluetoothStatusCodes.SUCCESS) {
+//                  String s = "gatt.writeDescriptor() returned " + rv + " : " + bluetoothStatusString(rv);
+//                  result.error("write_characteristic_error", s, null);
+//                  return;
+//              }
+//
+//          } else {
+//
+//              // Set descriptor
+//              if(!descriptor.setValue(hexToBytes(value))){
+//                  result.error("write_descriptor_error", "descriptor.setValue() returned false", null);
+//                  break;
+//              }
+//
+//              // Write descriptor
+//              if(!gatt.writeDescriptor(descriptor)){
+//                  result.error("write_descriptor_error", "gatt.writeDescriptor() returned false", null);
+//                  break;
+//              }
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "setNotification":
+//        {
+//          // see: BmSetNotificationRequest
+//          HashMap<String, Object> data = call.arguments();
+//          String remoteId =             (String) data.get("remote_id");
+//          String serviceUuid =          (String) data.get("service_uuid");
+//          String secondaryServiceUuid = (String) data.get("secondary_service_uuid");
+//          String characteristicUuid =   (String) data.get("characteristic_uuid");
+//          boolean enable =             (boolean) data.get("enable");
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          BluetoothGattCharacteristic characteristic = locateCharacteristic(gatt,
+//              serviceUuid, secondaryServiceUuid, characteristicUuid);
+//
+//          // configure local Android device to listen for characteristic changes
+//          if(!gatt.setCharacteristicNotification(characteristic, enable)){
+//              result.error("set_notification_error",
+//                  "gatt.setCharacteristicNotification(" + enable + ") returned false", null);
+//              break;
+//          }
+//
+//          BluetoothGattDescriptor cccDescriptor = characteristic.getDescriptor(CCCD_UUID);
+//          if(cccDescriptor == null) {
+//              // Some ble devices do not actually need their CCCD updated.
+//              // thus setCharacteristicNotification() is all that is required to enable notifications.
+//              // The arduino "bluno" devices are an example.
+//              String chr = characteristic.getUuid().toString();
+//              log(LogLevel.WARNING, "[FBP-Android] CCCD descriptor for characteristic not found: " + chr);
+//              result.success(null);
+//              return;
+//          }
+//
+//          byte[] descriptorValue = null;
+//
+//          // determine value
+//          if(enable) {
+//
+//              boolean canNotify = (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0;
+//              boolean canIndicate = (characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_INDICATE) > 0;
+//
+//              if(!canIndicate && !canNotify) {
+//                  result.error("set_notification_error",
+//                      "neither NOTIFY nor INDICATE properties are supported by this BLE characteristic", null);
+//                  break;
+//              }
+//
+//              // If a characteristic supports both notifications and indications,
+//              // we'll use notifications. This matches how CoreBluetooth works on iOS.
+//              if(canIndicate) {descriptorValue = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;}
+//              if(canNotify)   {descriptorValue = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;}
+//
+//          } else {
+//              descriptorValue  = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
+//          }
+//
+//          if (!cccDescriptor.setValue(descriptorValue)) {
+//              result.error("set_notification_error", "cccDescriptor.setValue() returned false", null);
+//              break;
+//          }
+//
+//          // update notifications on remote BLE device
+//          if (!gatt.writeDescriptor(cccDescriptor)) {
+//              result.error("set_notification_error", "gatt.writeDescriptor() returned false", null);
+//              break;
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "mtu":
+//        {
+//          String remoteId = (String) call.arguments;
+//
+//          Integer mtu = mMtu.get(remoteId);
+//          if(mtu == null) {
+//              result.error("mtu", "no instance of BluetoothGatt, have you connected first?", null);
+//              break;
+//          }
+//
+//          HashMap<String, Object> response = new HashMap<String, Object>();
+//          response.put("remote_id", remoteId);
+//          response.put("mtu", mtu);
+//
+//          result.success(response);
+//          break;
+//        }
+//
+//        case "requestMtu":
+//        {
+//          // see: BmMtuChangeRequest
+//          HashMap<String, Object> data = call.arguments();
+//          String remoteId = (String) data.get("remote_id");
+//          int mtu =            (int) data.get("mtu");
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          if(gatt.requestMtu(mtu) == false) {
+//              result.error("request_mtu", "gatt.requestMtu() returned false", null);
+//              break;
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "readRssi":
+//        {
+//          String remoteId = (String) call.arguments;
+//
+//          BluetoothGatt gatt = locateGatt(remoteId);
+//
+//          if(gatt.readRemoteRssi() == false) {
+//              result.error("read_rssi", "gatt.readRemoteRssi() returned false", null);
+//              break;
+//          }
+//
+//          result.success(null);
+//          break;
+//        }
+//
+//        case "removeBond":
+//        {
+//            String remoteId = (String) call.arguments;
+//
+//            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(remoteId);
+//
+//            // already removed?
+//            if (device.getBondState() == BluetoothDevice.BOND_NONE) {
+//              log(LogLevel.WARNING, "[FBP-Android] already not bonded");
+//              result.success(false); // no work to do
+//              break;
+//            }
+//            // already disconnected?
+//            BluetoothGatt gatt = null;
+//            if (gatt == null) {
+//              gatt = mCurrentlyConnectingDevices.get(remoteId);
+//              if (gatt != null) {
+//                  log(LogLevel.DEBUG, "disconnect: cancelling connection in progress");
+//              }
+//            }
+//            if (gatt == null) {
+//              gatt = mConnectedDevices.get(remoteId);;
+//            }
+//            if (gatt != null) {
+//                // disconnect
+//                gatt.disconnect();
+//
+//                // was connecting?
+//                if (mCurrentlyConnectingDevices.get(remoteId) != null) {
+//                    // remove
+//                    mCurrentlyConnectingDevices.remove(remoteId);
+//
+//                    // cleanup
+//                    gatt.close();
+//                }
+//            }
+//
+//
+//
+//            try {
+//                Method removeBondMethod = device.getClass().getMethod("removeBond");
+//                boolean rv = (boolean) removeBondMethod.invoke(device);
+//                if(rv == false) {
+//                    result.error("removeBond", "device.removeBond() returned false", null);
+//                    break;
+//                }
+//            } catch (Exception e) {
+//                result.error("removeBond", "device.removeBond() returned exception", e.toString());
+//                break;
+//            }
+//
+//            result.success(true);
+//            break;
+//        }
+//
+//        default:
+//        {
+//          result.notImplemented();
+//          break;
+//        }
+//      }
+//    } catch (Exception e) {
+//        StringWriter sw = new StringWriter();
+//        PrintWriter pw = new PrintWriter(sw);
+//        e.printStackTrace(pw);
+//        String stackTrace = sw.toString();
+//        result.error("androidException", e.toString(), stackTrace);
+//        return;
+//    }
   }
 
   //////////////////////////////////////////////////////////////////////////////////////
@@ -938,62 +938,62 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
                                         String[] permissions,
                                           int[] grantResults)
   {
-      OperationOnPermission operation = operationsOnPermission.get(requestCode);
-
-      if (operation != null && grantResults.length > 0) {
-          operation.op(grantResults[0] == PackageManager.PERMISSION_GRANTED, permissions[0]);
-          return true;
-      } else {
-          return false;
-      }
+//      OperationOnPermission operation = operationsOnPermission.get(requestCode);
+//
+//      if (operation != null && grantResults.length > 0) {
+//          operation.op(grantResults[0] == PackageManager.PERMISSION_GRANTED, permissions[0]);
+//          return true;
+//      } else {
+//          return false;
+//      }
   }
 
   private void ensurePermissions(List<String> permissions, OperationOnPermission operation)
   {
       // only request permission we don't already have
-      List<String> permissionsNeeded = new ArrayList<>();
-      for (String permission : permissions) {
-          if (permission != null && ContextCompat.checkSelfPermission(context, permission)
-                  != PackageManager.PERMISSION_GRANTED) {
-              permissionsNeeded.add(permission);
-          }
-      }
-
-      // no work to do?
-      if (permissionsNeeded.isEmpty()) {
-          operation.op(true, null);
-          return;
-      }
-
-      askPermission(permissionsNeeded, operation);
+//      List<String> permissionsNeeded = new ArrayList<>();
+//      for (String permission : permissions) {
+//          if (permission != null && ContextCompat.checkSelfPermission(context, permission)
+//                  != PackageManager.PERMISSION_GRANTED) {
+//              permissionsNeeded.add(permission);
+//          }
+//      }
+//
+//      // no work to do?
+//      if (permissionsNeeded.isEmpty()) {
+//          operation.op(true, null);
+//          return;
+//      }
+//
+//      askPermission(permissionsNeeded, operation);
   }
 
   private void askPermission(List<String> permissionsNeeded, OperationOnPermission operation)
   {
       // finished asking for permission? call callback
-      if (permissionsNeeded.isEmpty()) {
-          operation.op(true, null);
-          return;
-      }
-
-      String nextPermission = permissionsNeeded.remove(0);
-
-      operationsOnPermission.put(lastEventId, (granted, perm) -> {
-          operationsOnPermission.remove(lastEventId);
-          if (!granted) {
-              operation.op(false, perm);
-              return;
-          }
-          // recursively ask for next permission
-          askPermission(permissionsNeeded, operation);
-      });
-
-      ActivityCompat.requestPermissions(
-              activityBinding.getActivity(),
-              new String[]{nextPermission},
-              lastEventId);
-
-      lastEventId++;
+//      if (permissionsNeeded.isEmpty()) {
+//          operation.op(true, null);
+//          return;
+//      }
+//
+//      String nextPermission = permissionsNeeded.remove(0);
+//
+//      operationsOnPermission.put(lastEventId, (granted, perm) -> {
+//          operationsOnPermission.remove(lastEventId);
+//          if (!granted) {
+//              operation.op(false, perm);
+//              return;
+//          }
+//          // recursively ask for next permission
+//          askPermission(permissionsNeeded, operation);
+//      });
+//
+//      ActivityCompat.requestPermissions(
+//              activityBinding.getActivity(),
+//              new String[]{nextPermission},
+//              lastEventId);
+//
+//      lastEventId++;
   }
 
   //////////////////////////////////////////////
@@ -1102,37 +1102,37 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
     private final BroadcastReceiver mBluetoothStateReceiver = new BroadcastReceiver() {
       @Override
       public void onReceive(Context context, Intent intent) {
-       final String action = intent.getAction();
-            log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver");
-            // no change?
-            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action) == false) {
-                log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver ACTION_STATE_CHANGED = action == false");
-                return;
-            }
-
-            final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
-
-            // convert to Protobuf enum
-            int convertedState;
-            switch (state) {
-                case BluetoothAdapter.STATE_OFF:          convertedState = 6;           break;
-                case BluetoothAdapter.STATE_ON:           convertedState = 4;           break;
-                case BluetoothAdapter.STATE_TURNING_OFF:  convertedState = 5;           break;
-                case BluetoothAdapter.STATE_TURNING_ON:   convertedState = 3;           break;
-                default:                                  convertedState = 0;           break;
-            }
-            log(LogLevel.INFO, "[FBP-Android] mBluetoothStateReceiver state = " + convertedState);
-
-            // disconnect all devices
-            if (state == BluetoothAdapter.STATE_TURNING_OFF || 
-                state == BluetoothAdapter.STATE_OFF) {
-                log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver adapterTurnOff");
-                disconnectAllDevices("adapterTurnOff");
-            }
-            // see: BmBluetoothAdapterState
-            HashMap<String, Object> map = new HashMap<>();
-            map.put("state", convertedState);
-            invokeMethodUIThread("adapterStateChanged", map);
+//       final String action = intent.getAction();
+//            log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver");
+//            // no change?
+//            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action) == false) {
+//                log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver ACTION_STATE_CHANGED = action == false");
+//                return;
+//            }
+//
+//            final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+//
+//            // convert to Protobuf enum
+//            int convertedState;
+//            switch (state) {
+//                case BluetoothAdapter.STATE_OFF:          convertedState = 6;           break;
+//                case BluetoothAdapter.STATE_ON:           convertedState = 4;           break;
+//                case BluetoothAdapter.STATE_TURNING_OFF:  convertedState = 5;           break;
+//                case BluetoothAdapter.STATE_TURNING_ON:   convertedState = 3;           break;
+//                default:                                  convertedState = 0;           break;
+//            }
+//            log(LogLevel.INFO, "[FBP-Android] mBluetoothStateReceiver state = " + convertedState);
+//
+//            // disconnect all devices
+//            if (state == BluetoothAdapter.STATE_TURNING_OFF ||
+//                state == BluetoothAdapter.STATE_OFF) {
+//                log(LogLevel.DEBUG, "[FBP-Android] mBluetoothStateReceiver adapterTurnOff");
+//                disconnectAllDevices("adapterTurnOff");
+//            }
+//            // see: BmBluetoothAdapterState
+//            HashMap<String, Object> map = new HashMap<>();
+//            map.put("state", convertedState);
+//            invokeMethodUIThread("adapterStateChanged", map);
         //}
       }
     };
@@ -1153,29 +1153,29 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 
   private List<ScanFilter> fetchFilters(HashMap<String, Object> scanSettings)
   {
-      List<ScanFilter> filters;
+      List<ScanFilter> filters = null;
 
-      List<String> servicesUuids = (List<String>)scanSettings.get("service_uuids");
-      int macCount = (int)scanSettings.getOrDefault("mac_count", 0);
-      int serviceCount = servicesUuids.size();
-      int count = macCount + serviceCount;
-
-      filters = new ArrayList<>(count);
-
-      List<String> noMacAddresses = new ArrayList<String>();
-      List<String> macAddresses = (List<String>)scanSettings.getOrDefault("mac_addresses", noMacAddresses);
-
-      for (int i = 0; i < macCount; i++) {
-          String macAddress = macAddresses.get(i);
-          ScanFilter f = new ScanFilter.Builder().setDeviceAddress(macAddress).build();
-          filters.add(f);
-      }
-
-      for (int i = 0; i < serviceCount; i++) {
-          String uuid = servicesUuids.get(i);
-          ScanFilter f = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(uuid)).build();
-          filters.add(f);
-      }
+//      List<String> servicesUuids = (List<String>)scanSettings.get("service_uuids");
+//      int macCount = (int)scanSettings.getOrDefault("mac_count", 0);
+//      int serviceCount = servicesUuids.size();
+//      int count = macCount + serviceCount;
+//
+//      filters = new ArrayList<>(count);
+//
+//      List<String> noMacAddresses = new ArrayList<String>();
+//      List<String> macAddresses = (List<String>)scanSettings.getOrDefault("mac_addresses", noMacAddresses);
+//
+//      for (int i = 0; i < macCount; i++) {
+//          String macAddress = macAddresses.get(i);
+//          ScanFilter f = new ScanFilter.Builder().setDeviceAddress(macAddress).build();
+//          filters.add(f);
+//      }
+//
+//      for (int i = 0; i < serviceCount; i++) {
+//          String uuid = servicesUuids.get(i);
+//          ScanFilter f = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(uuid)).build();
+//          filters.add(f);
+//      }
 
       return filters;
   }
@@ -1274,62 +1274,62 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
     @Override
     public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-      log(LogLevel.DEBUG, "[FBP-Android] onConnectionStateChange: status: " + status + " newState: " + newState);
-      
-      String remoteId = gatt.getDevice().getAddress();
-      mConnectionState.put(remoteId, newState);
-
-      // see: BmConnectionStateResponse
-      //statusを渡す
-      HashMap<String, Object> responseStatus = new HashMap<>();
-      responseStatus.put("remote_id", remoteId);
-      responseStatus.put("state", bmConnectionStateEnum(newState));
-      responseStatus.put("status", status);
-      //デバイス接続ステータス取得用
-      invokeMethodUIThread("DeviceStatus", responseStatus);
-
-      // android never uses this callback with enums values of CONNECTING or DISCONNECTING,
-      // (theyre only used for gatt.getConnectionState()), but just to be
-      // future proof, explicitly ignore anything else. CoreBluetooth is the same way.
-      if(newState != BluetoothProfile.STATE_CONNECTED &&
-          newState != BluetoothProfile.STATE_DISCONNECTED) {
-          return;
-      }
-
-
-       // connected?
-      if(newState == BluetoothProfile.STATE_CONNECTED) {
-          // add to connected devices
-          mConnectedDevices.put(remoteId, gatt);
-
-          // remove from currently connecting devices
-          mCurrentlyConnectingDevices.remove(remoteId);
-
-          // default minimum mtu
-          mMtu.put(remoteId, 23);
-      }
-
-      // disconnected?
-      if(newState == BluetoothProfile.STATE_DISCONNECTED) {
-
-          // remove from connected devices
-          mConnectedDevices.remove(remoteId);
-
-          // remove from currently connecting devices
-          mCurrentlyConnectingDevices.remove(remoteId);
-
-          //TODO: 自動接続を利用する場合はgatt.closeは呼ばないほうがいい
-          // it is important to close after disconnection, otherwise we will 
-          // quickly run out of bluetooth resources, preventing new connections
-          gatt.close();
-      }
-
-      // see: BmConnectionStateResponse
-      HashMap<String, Object> response = new HashMap<>();
-      response.put("remote_id", remoteId);
-      response.put("state", bmConnectionStateEnum(newState));
-
-      invokeMethodUIThread("DeviceState", response);
+//      log(LogLevel.DEBUG, "[FBP-Android] onConnectionStateChange: status: " + status + " newState: " + newState);
+//
+//      String remoteId = gatt.getDevice().getAddress();
+//      mConnectionState.put(remoteId, newState);
+//
+//      // see: BmConnectionStateResponse
+//      //statusを渡す
+//      HashMap<String, Object> responseStatus = new HashMap<>();
+//      responseStatus.put("remote_id", remoteId);
+//      responseStatus.put("state", bmConnectionStateEnum(newState));
+//      responseStatus.put("status", status);
+//      //デバイス接続ステータス取得用
+//      invokeMethodUIThread("DeviceStatus", responseStatus);
+//
+//      // android never uses this callback with enums values of CONNECTING or DISCONNECTING,
+//      // (theyre only used for gatt.getConnectionState()), but just to be
+//      // future proof, explicitly ignore anything else. CoreBluetooth is the same way.
+//      if(newState != BluetoothProfile.STATE_CONNECTED &&
+//          newState != BluetoothProfile.STATE_DISCONNECTED) {
+//          return;
+//      }
+//
+//
+//       // connected?
+//      if(newState == BluetoothProfile.STATE_CONNECTED) {
+//          // add to connected devices
+//          mConnectedDevices.put(remoteId, gatt);
+//
+//          // remove from currently connecting devices
+//          mCurrentlyConnectingDevices.remove(remoteId);
+//
+//          // default minimum mtu
+//          mMtu.put(remoteId, 23);
+//      }
+//
+//      // disconnected?
+//      if(newState == BluetoothProfile.STATE_DISCONNECTED) {
+//
+//          // remove from connected devices
+//          mConnectedDevices.remove(remoteId);
+//
+//          // remove from currently connecting devices
+//          mCurrentlyConnectingDevices.remove(remoteId);
+//
+//          //TODO: 自動接続を利用する場合はgatt.closeは呼ばないほうがいい
+//          // it is important to close after disconnection, otherwise we will
+//          // quickly run out of bluetooth resources, preventing new connections
+//          gatt.close();
+//      }
+//
+//      // see: BmConnectionStateResponse
+//      HashMap<String, Object> response = new HashMap<>();
+//      response.put("remote_id", remoteId);
+//      response.put("state", bmConnectionStateEnum(newState));
+//
+//      invokeMethodUIThread("DeviceState", response);
     }
 
     @Override
@@ -1538,94 +1538,94 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   * @throws ArrayIndexOutOfBoundsException if the input is truncated.
   */
   HashMap<String, Object> parseAdvertisementData(byte[] rawData) {
-      ByteBuffer data = ByteBuffer.wrap(rawData).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+//      ByteBuffer data = ByteBuffer.wrap(rawData).asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
       HashMap<String, Object> response = new HashMap<>();
-      boolean seenLongLocalName = false;
-      HashMap<String, Object> serviceData = new HashMap<>();
-      HashMap<String, Object> manufacturerData = new HashMap<>();
-      do {
-          int length = data.get() & 0xFF;
-          if (length == 0) {
-              break;
-          }
-          if (length > data.remaining()) {
-              Log.w(TAG, "parseAdvertisementData: Not enough data.");
-              return response;
-          }
-
-          int type = data.get() & 0xFF;
-          length--;
-
-          switch (type) {
-              case 0x08: // Short local name.
-              case 0x09: { // Long local name.
-                  if (seenLongLocalName) {
-                      // Prefer the long name over the short.
-                      data.position(data.position() + length);
-                      break;
-                  }
-                  byte[] localName = new byte[length];
-                  data.get(localName);
-                  try {
-                      response.put("local_name", new String(localName, "UTF-8"));
-                  } catch (UnsupportedEncodingException e) {}
-                  if (type == 0x09) {
-                      seenLongLocalName = true;
-                  }
-                  break;
-              }
-              case 0x0A: { // Power level.
-                  response.put("tx_power_level", data.get());
-                  break;
-              }
-              case 0x16: // Service Data with 16 bit UUID.
-              case 0x20: // Service Data with 32 bit UUID.
-              case 0x21: { // Service Data with 128 bit UUID.
-                  UUID svcUuid;
-                  int remainingDataLength = 0;
-                  if (type == 0x16 || type == 0x20) {
-                      long svcUuidInteger;
-                      if (type == 0x16) {
-                          svcUuidInteger = data.getShort() & 0xFFFF;
-                          remainingDataLength = length - 2;
-                      } else {
-                          svcUuidInteger = data.getInt() & 0xFFFFFFFF;
-                          remainingDataLength = length - 4;
-                      }
-                      svcUuid = UUID.fromString(String.format("%08x-0000-1000-8000-00805f9b34fb", svcUuidInteger));
-                  } else {
-                      long msb = data.getLong();
-                      long lsb = data.getLong();
-                      svcUuid = new UUID(msb, lsb);
-                      remainingDataLength = length - 16;
-                  }
-                  byte[] remainingData = new byte[remainingDataLength];
-                  data.get(remainingData);
-
-                  serviceData.put(svcUuid.toString(), remainingData);
-                  response.put("service_data", serviceData);
-                  break;
-              }
-              case 0xFF: {// Manufacturer specific data.
-                  if(length < 2) {
-                      Log.w(TAG, "parseAdvertisementData: Not enough data for Manufacturer specific data.");
-                      break;
-                  }
-                  int manufacturerId = data.getShort();
-                  if((length - 2) > 0) {
-                      byte[] msd = new byte[length - 2];
-                      data.get(msd);
-                      manufacturerData.put(Integer.toString(manufacturerId), msd);
-                      response.put("manufacturer_data", manufacturerId);
-                  }
-                  break;
-              }
-              default: {
-                  data.position(data.position() + length);
-                  break;
-              }
-          }
-      } while (true);
+//      boolean seenLongLocalName = false;
+//      HashMap<String, Object> serviceData = new HashMap<>();
+//      HashMap<String, Object> manufacturerData = new HashMap<>();
+//      do {
+//          int length = data.get() & 0xFF;
+//          if (length == 0) {
+//              break;
+//          }
+//          if (length > data.remaining()) {
+//              Log.w(TAG, "parseAdvertisementData: Not enough data.");
+//              return response;
+//          }
+//
+//          int type = data.get() & 0xFF;
+//          length--;
+//
+//          switch (type) {
+//              case 0x08: // Short local name.
+//              case 0x09: { // Long local name.
+//                  if (seenLongLocalName) {
+//                      // Prefer the long name over the short.
+//                      data.position(data.position() + length);
+//                      break;
+//                  }
+//                  byte[] localName = new byte[length];
+//                  data.get(localName);
+//                  try {
+//                      response.put("local_name", new String(localName, "UTF-8"));
+//                  } catch (UnsupportedEncodingException e) {}
+//                  if (type == 0x09) {
+//                      seenLongLocalName = true;
+//                  }
+//                  break;
+//              }
+//              case 0x0A: { // Power level.
+//                  response.put("tx_power_level", data.get());
+//                  break;
+//              }
+//              case 0x16: // Service Data with 16 bit UUID.
+//              case 0x20: // Service Data with 32 bit UUID.
+//              case 0x21: { // Service Data with 128 bit UUID.
+//                  UUID svcUuid;
+//                  int remainingDataLength = 0;
+//                  if (type == 0x16 || type == 0x20) {
+//                      long svcUuidInteger;
+//                      if (type == 0x16) {
+//                          svcUuidInteger = data.getShort() & 0xFFFF;
+//                          remainingDataLength = length - 2;
+//                      } else {
+//                          svcUuidInteger = data.getInt() & 0xFFFFFFFF;
+//                          remainingDataLength = length - 4;
+//                      }
+//                      svcUuid = UUID.fromString(String.format("%08x-0000-1000-8000-00805f9b34fb", svcUuidInteger));
+//                  } else {
+//                      long msb = data.getLong();
+//                      long lsb = data.getLong();
+//                      svcUuid = new UUID(msb, lsb);
+//                      remainingDataLength = length - 16;
+//                  }
+//                  byte[] remainingData = new byte[remainingDataLength];
+//                  data.get(remainingData);
+//
+//                  serviceData.put(svcUuid.toString(), remainingData);
+//                  response.put("service_data", serviceData);
+//                  break;
+//              }
+//              case 0xFF: {// Manufacturer specific data.
+//                  if(length < 2) {
+//                      Log.w(TAG, "parseAdvertisementData: Not enough data for Manufacturer specific data.");
+//                      break;
+//                  }
+//                  int manufacturerId = data.getShort();
+//                  if((length - 2) > 0) {
+//                      byte[] msd = new byte[length - 2];
+//                      data.get(msd);
+//                      manufacturerData.put(Integer.toString(manufacturerId), msd);
+//                      response.put("manufacturer_data", manufacturerId);
+//                  }
+//                  break;
+//              }
+//              default: {
+//                  data.position(data.position() + length);
+//                  break;
+//              }
+//          }
+//      } while (true);
       return response;
   } 
 
@@ -1656,132 +1656,132 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
   @TargetApi(21)
   HashMap<String, Object> bmScanResult(BluetoothDevice device, ScanResult result) {
 
-      ScanRecord scanRecord = result.getScanRecord();
-
-      HashMap<String, Object> advertisementData = new HashMap<>();
-      
-      // connectable
-      if(Build.VERSION.SDK_INT >= 26) {
-          advertisementData.put("connectable", result.isConnectable());
-      } else if(scanRecord != null) {
-          int flags = scanRecord.getAdvertiseFlags();
-          advertisementData.put("connectable", (flags & 0x2) > 0);
-      }
-
-      if(scanRecord != null) {
-
-          String localName = scanRecord.getDeviceName();
-
-          int txPower = scanRecord.getTxPowerLevel();
-
-          // Manufacturer Specific Data
-          SparseArray<byte[]> msd = scanRecord.getManufacturerSpecificData();
-          HashMap<Integer, String> msdMap = new HashMap<Integer, String>();
-          if(msd != null) {
-              for (int i = 0; i < msd.size(); i++) {
-                  int key = msd.keyAt(i);
-                  byte[] value = msd.valueAt(i);
-                  msdMap.put(key, bytesToHex(value));
-              }
-          }
-
-          // Service Data
-          Map<ParcelUuid, byte[]> serviceData = scanRecord.getServiceData();
-          HashMap<String, Object> serviceDataMap = new HashMap<>();
-          if(serviceData != null) {
-              for (Map.Entry<ParcelUuid, byte[]> entry : serviceData.entrySet()) {
-                  ParcelUuid key = entry.getKey();
-                  byte[] value = entry.getValue();
-                  serviceDataMap.put(key.getUuid().toString(), bytesToHex(value));
-              }
-          }
-
-          // Service UUIDs
-          List<ParcelUuid> serviceUuids = scanRecord.getServiceUuids();
-          List<String> serviceUuidList = new ArrayList<String>();
-          if(serviceUuids != null) {
-              for (ParcelUuid s : serviceUuids) {
-                  serviceUuidList.add(s.getUuid().toString());
-              }
-          }
-
-          // add to map
-          if(localName != null) {
-              advertisementData.put("local_name", localName);
-          }
-          if(txPower != Integer.MIN_VALUE) {
-              advertisementData.put("tx_power_level", txPower);
-          }
-          if(msd != null) {
-              advertisementData.put("manufacturer_data", msdMap);
-          }
-          if(serviceData != null) {
-              advertisementData.put("service_data", serviceDataMap);
-          }
-          if(serviceUuids != null) {
-              advertisementData.put("service_uuids", serviceUuidList);
-          }
-      }
-
-      // connection state
-      int cs = mBluetoothManager.getConnectionState(device, BluetoothProfile.GATT);
+//      ScanRecord scanRecord = result.getScanRecord();
+//
+//      HashMap<String, Object> advertisementData = new HashMap<>();
+//
+//      // connectable
+//      if(Build.VERSION.SDK_INT >= 26) {
+//          advertisementData.put("connectable", result.isConnectable());
+//      } else if(scanRecord != null) {
+//          int flags = scanRecord.getAdvertiseFlags();
+//          advertisementData.put("connectable", (flags & 0x2) > 0);
+//      }
+//
+//      if(scanRecord != null) {
+//
+//          String localName = scanRecord.getDeviceName();
+//
+//          int txPower = scanRecord.getTxPowerLevel();
+//
+//          // Manufacturer Specific Data
+//          SparseArray<byte[]> msd = scanRecord.getManufacturerSpecificData();
+//          HashMap<Integer, String> msdMap = new HashMap<Integer, String>();
+//          if(msd != null) {
+//              for (int i = 0; i < msd.size(); i++) {
+//                  int key = msd.keyAt(i);
+//                  byte[] value = msd.valueAt(i);
+//                  msdMap.put(key, bytesToHex(value));
+//              }
+//          }
+//
+//          // Service Data
+//          Map<ParcelUuid, byte[]> serviceData = scanRecord.getServiceData();
+//          HashMap<String, Object> serviceDataMap = new HashMap<>();
+//          if(serviceData != null) {
+//              for (Map.Entry<ParcelUuid, byte[]> entry : serviceData.entrySet()) {
+//                  ParcelUuid key = entry.getKey();
+//                  byte[] value = entry.getValue();
+//                  serviceDataMap.put(key.getUuid().toString(), bytesToHex(value));
+//              }
+//          }
+//
+//          // Service UUIDs
+//          List<ParcelUuid> serviceUuids = scanRecord.getServiceUuids();
+//          List<String> serviceUuidList = new ArrayList<String>();
+//          if(serviceUuids != null) {
+//              for (ParcelUuid s : serviceUuids) {
+//                  serviceUuidList.add(s.getUuid().toString());
+//              }
+//          }
+//
+//          // add to map
+//          if(localName != null) {
+//              advertisementData.put("local_name", localName);
+//          }
+//          if(txPower != Integer.MIN_VALUE) {
+//              advertisementData.put("tx_power_level", txPower);
+//          }
+//          if(msd != null) {
+//              advertisementData.put("manufacturer_data", msdMap);
+//          }
+//          if(serviceData != null) {
+//              advertisementData.put("service_data", serviceDataMap);
+//          }
+//          if(serviceUuids != null) {
+//              advertisementData.put("service_uuids", serviceUuidList);
+//          }
+//      }
+//
+//      // connection state
+//      int cs = mBluetoothManager.getConnectionState(device, BluetoothProfile.GATT);
 
       HashMap<String, Object> map = new HashMap<>();
-      map.put("device", bmBluetoothDevice(device));
-      map.put("rssi", result.getRssi());
-      map.put("advertisement_data", advertisementData);
-      map.put("connection_state", bmConnectionStateEnum(cs));
+//      map.put("device", bmBluetoothDevice(device));
+//      map.put("rssi", result.getRssi());
+//      map.put("advertisement_data", advertisementData);
+//      map.put("connection_state", bmConnectionStateEnum(cs));
       return map;
   }
 
   HashMap<String, Object> bmBluetoothDevice(BluetoothDevice device) {
       HashMap<String, Object> map = new HashMap<>();
-      map.put("remote_id", device.getAddress());
-      if(device.getName() != null) {
-          map.put("name", device.getName());
-      }
-      map.put("type", device.getType());
+//      map.put("remote_id", device.getAddress());
+//      if(device.getName() != null) {
+//          map.put("name", device.getName());
+//      }
+//      map.put("type", device.getType());
       return map;
   }
 
   HashMap<String, Object> bmBluetoothService(BluetoothDevice device, BluetoothGattService service, BluetoothGatt gatt) {
 
-      List<Object> characteristics = new ArrayList<Object>();
-      for(BluetoothGattCharacteristic c : service.getCharacteristics()) {
-          characteristics.add(bmBluetoothCharacteristic(device, c, gatt));
-      }
-
-      List<Object> includedServices = new ArrayList<Object>();
-      for(BluetoothGattService s : service.getIncludedServices()) {
-          includedServices.add(bmBluetoothService(device, s, gatt));
-      }
+//      List<Object> characteristics = new ArrayList<Object>();
+//      for(BluetoothGattCharacteristic c : service.getCharacteristics()) {
+//          characteristics.add(bmBluetoothCharacteristic(device, c, gatt));
+//      }
+//
+//      List<Object> includedServices = new ArrayList<Object>();
+//      for(BluetoothGattService s : service.getIncludedServices()) {
+//          includedServices.add(bmBluetoothService(device, s, gatt));
+//      }
 
       HashMap<String, Object> map = new HashMap<>();
-      map.put("remote_id", device.getAddress());
-      map.put("uuid", service.getUuid().toString());
-      map.put("is_primary", service.getType() == BluetoothGattService.SERVICE_TYPE_PRIMARY);
-      map.put("characteristics", characteristics);
-      map.put("included_services", includedServices);
+//      map.put("remote_id", device.getAddress());
+//      map.put("uuid", service.getUuid().toString());
+//      map.put("is_primary", service.getType() == BluetoothGattService.SERVICE_TYPE_PRIMARY);
+//      map.put("characteristics", characteristics);
+//      map.put("included_services", includedServices);
       return map;
   }
 
   HashMap<String, Object> bmBluetoothCharacteristic(BluetoothDevice device, BluetoothGattCharacteristic characteristic, BluetoothGatt gatt) {
 
-      ServicePair pair = getServicePair(gatt, characteristic);
-
-      List<Object> descriptors = new ArrayList<Object>();
-      for(BluetoothGattDescriptor d : characteristic.getDescriptors()) {
-          descriptors.add(bmBluetoothDescriptor(device, d));
-      }
+//      ServicePair pair = getServicePair(gatt, characteristic);
+//
+//      List<Object> descriptors = new ArrayList<Object>();
+//      for(BluetoothGattDescriptor d : characteristic.getDescriptors()) {
+//          descriptors.add(bmBluetoothDescriptor(device, d));
+//      }
 
       HashMap<String, Object> map = new HashMap<>();
-      map.put("remote_id", device.getAddress());
-      map.put("service_uuid", pair.primary);
-      map.put("secondary_service_uuid", pair.secondary);
-      map.put("uuid", characteristic.getUuid().toString());
-      map.put("descriptors", descriptors);
-      map.put("properties", bmCharacteristicProperties(characteristic.getProperties()));
-      map.put("value", bytesToHex(characteristic.getValue()));
+//      map.put("remote_id", device.getAddress());
+//      map.put("service_uuid", pair.primary);
+//      map.put("secondary_service_uuid", pair.secondary);
+//      map.put("uuid", characteristic.getUuid().toString());
+//      map.put("descriptors", descriptors);
+//      map.put("properties", bmCharacteristicProperties(characteristic.getProperties()));
+//      map.put("value", bytesToHex(characteristic.getValue()));
       return map;
   }
 
