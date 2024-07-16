@@ -946,6 +946,7 @@ public class FlutterBluePlusPlugin implements FlutterPlugin, MethodCallHandler, 
 //      } else {
 //          return false;
 //      }
+    return true;
   }
 
   private void ensurePermissions(List<String> permissions, OperationOnPermission operation)
